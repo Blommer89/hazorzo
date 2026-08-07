@@ -1,34 +1,57 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Belső felbontás beállítása (A pixeles grafikához tökéletes fix méret)
+// Belső fix felbontás beállítása
 canvas.width = 384;
 canvas.height = 288;
 
-// Teszt kutya objektum, amíg nincsenek kész a képek
+// Képek betöltése
+const yardImg = new Image();
+yardImg.src = "assets/yard.png";
+
+const dogImg = new Image();
+dogImg.src = "assets/dog.png";
+
+// Kutyus objektum az adatokkal
 let dog = {
     x: 150,
     y: 160,
     width: 48,
     height: 48,
-    color: "#d9822b", // Berni hegyi kutya jellegű barna-fekete-fehér hangulat
-    state: "Alap (Idle)"
+    state: "Alap (Idle)",
+    // Ha a sprite sheetben egymás mellett vannak a fázisok, itt válthatjuk az x eltolást (frameX)
+    frameX: 0 
 };
 
-// Fő Játék Ciklus (Loop)
+// Várjuk meg, amíg betöltődnek a képek, mielőtt indítjuk a ciklust
+let imagesLoaded = 0;
+function imageLoadedCheck() {
+    imagesLoaded++;
+    if (imagesLoaded === 2) {
+        gameLoop();
+    }
+}
+
+yardImg.onload = imageLoadedCheck;
+dogImg.onload = imageLoadedCheck;
+
+// Fő Játék Ciklus
 function gameLoop() {
-    // 1. Képernyő törlése
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 1. Háttér (udvar) kirajzolása a teljes vászonra
+    ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
 
-    // Ideiglenes udvar háttér (zöld fű alul)
-    ctx.fillStyle = "#38b764";
-    ctx.fillRect(0, 180, canvas.width, 108);
+    // 2. Kutyus kirajzolása
+    // (drawImage syntax: kép, forrásX, forrásY, forrásSzélesség, forrásMagasság, 
+    //  célX, célY, célSzélesség, célMagasság)
+    ctx.drawImage(
+        dogImg, 
+        dog.frameX * 48, 0, 48, 48, // Kivágás a sprite-ból (ha egy sorban vannak)
+        dog.x, dog.y, dog.width, dog.height
+    );
 
-    // Teszt kutya kirajzolása
-    ctx.fillStyle = dog.color;
-    ctx.fillRect(dog.x, dog.y, dog.width, dog.height);
-
-    // Szöveg kiírása a kutyus aktuális kedvéről
+    // 3. Állapot szöveg megjelenítése retro stílusban
+    ctx.fillStyle = "#000";
+    ctx.fillText(`Állapot: ${dog.state}`, 11, 21); // Kis árnyék hatás
     ctx.fillStyle = "#fff";
     ctx.font = "12px monospace";
     ctx.fillText(`Állapot: ${dog.state}`, 10, 20);
@@ -36,7 +59,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Interakció: Ha megböököd/kattintasz a kutyára
+// Interakció: Ha megbököd a kutyát a vásznon
 canvas.addEventListener("click", (e) => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -44,7 +67,7 @@ canvas.addEventListener("click", (e) => {
     const clickX = (e.clientX - rect.left) * scaleX;
     const clickY = (e.clientY - rect.top) * scaleY;
 
-    // Megnézzük, hogy a kutyára kattintott-e
+    // Megnézzük, hogy a kutyus területére kattintott-e
     if (
         clickX >= dog.x &&
         clickX <= dog.x + dog.width &&
@@ -52,20 +75,19 @@ canvas.addEventListener("click", (e) => {
         clickY <= dog.y + dog.height
     ) {
         dog.state = "Megsértődött! 💢";
-        dog.color = "#cc2f2f"; // Elvörösödik dühében
+        dog.frameX = 1; // Feltételezve, hogy a 2. oszlopban van a mérges póz
         
-        // 1.5 másodperc múlva visszatér alapba
         setTimeout(() => {
             dog.state = "Alap (Idle)";
-            dog.color = "#d9822b";
+            dog.frameX = 0; // Vissza az alap pózra
         }, 1500);
     }
 });
 
-// Gombok eseményei
+// UI Gombok eseményei
 document.getElementById("btn-whistle").addEventListener("click", () => {
     dog.state = "Odafut a sípra! 📯";
-    dog.x = 150; // Visszaáll középre
+    dog.x = 150; 
 });
 
 document.getElementById("btn-food").addEventListener("click", () => {
@@ -76,5 +98,10 @@ document.getElementById("btn-water").addEventListener("click", () => {
     dog.state = "Iszik a tálból... 💧";
 });
 
-// Indítjuk a ciklust
-gameLoop();
+// Ha esetleg lassan töltődne be vagy hiba lenne, fallback indítás (biztos ami biztos)
+setTimeout(() => {
+    if (imagesLoaded < 2) {
+        console.log("Képek hiányoznak vagy lassan töltenek, de futtatjuk a ciklust.");
+        gameLoop();
+    }
+}, 1000);
