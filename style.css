@@ -1,0 +1,65 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body {
+    background-color: #222;
+    color: #fff;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 4 / 3; /* Klasszikus retro képarány */
+    position: relative;
+    background-color: #5c94fc; /* Alap égbolt kék, amíg nincs udvar kép */
+    border: 4px solid #fff;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated; /* Ez adja meg a pixeles 8-bites élességet! */
+    image-rendering: crisp-edges;
+}
+
+#ui-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    width: 100%;
+    max-width: 600px;
+    padding: 0 10px;
+}
+
+#ui-controls button {
+    flex: 1;
+    padding: 12px;
+    font-size: 16px;
+    font-family: monospace;
+    font-weight: bold;
+    background-color: #f7d51d;
+    border: 3px solid #000;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #b39500;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+#ui-controls button:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 #b39500;
+}
