@@ -1,0 +1,15 @@
+{
+  "name": "8-Bit Berni Udvar",
+  "short_name": "Berni Kutya",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#222222",
+  "theme_color": "#5c94fc",
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
