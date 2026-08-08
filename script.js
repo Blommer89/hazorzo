@@ -1,9 +1,9 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Az eredeti képfelbontásod
-canvas.width = 777;
-canvas.height = 1191;
+// Új, nagy felbontás (1080x2340)
+canvas.width = 1080;
+canvas.height = 2340;
 
 const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
@@ -22,19 +22,19 @@ dogImages.walk.src = "assets/dog_walk.png";
 dogImages.eating.src = "assets/dog_eating.png";
 dogImages.drinking.src = "assets/dog_drinking.png";
 
-// Kutyus helyzete és az alaphelyzet (ahová visszatér evés után)
+// Kutyus helyzete és mérete az 1080x2340-es vásznon (lent az udvaron)
 let dog = { 
-    x: 300, y: 900, 
-    startX: 300, startY: 900, 
-    width: 120, height: 120, 
+    x: 415, y: 1800, 
+    startX: 415, startY: 1800, 
+    width: 250, height: 250, 
     state: "Alap (Idle)", 
     currentImage: dogImages.idle 
 };
 
-// Tálak helyzete az alsó részen
+// Tálak helyzete és mérete az alsó részen
 const bowls = {
-    water: { x: 100, y: 950, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
-    food: { x: 500, y: 950, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
+    water: { x: 150, y: 1950, width: 180, height: 180, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    food: { x: 750, y: 1950, width: 180, height: 180, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
 let imagesLoaded = 0;
@@ -48,12 +48,18 @@ function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
     
-    ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, 120, 120);
-    ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, 120, 120);
+    // Tálak kirajzolása
+    ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
+    ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
+    
+    // Kutyus kirajzolása
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
     
-    ctx.fillStyle = "#fff"; ctx.font = "40px monospace";
-    ctx.fillText(`Állapot: ${dog.state}`, 50, 100);
+    // Állapot szöveg
+    ctx.fillStyle = "#fff"; 
+    ctx.font = "bold 60px monospace";
+    ctx.fillText(`Állapot: ${dog.state}`, 80, 150);
+    
     requestAnimationFrame(gameLoop);
 }
 
@@ -67,7 +73,7 @@ function startInteraction(e) {
 
     // Tálak ellenőrzése
     Object.values(bowls).forEach(bowl => {
-        if (clickX >= bowl.x && clickX <= bowl.x + 120 && clickY >= bowl.y && clickY <= bowl.y + 120) {
+        if (clickX >= bowl.x && clickX <= bowl.x + bowl.width && clickY >= bowl.y && clickY <= bowl.y + bowl.height) {
             if (!bowl.isFull) {
                 bowl.isFull = true; 
                 bowl.img = bowl.fullImg;
@@ -98,39 +104,34 @@ function startInteraction(e) {
 function moveDogTo(targetX, targetY, stateText, img, onComplete) {
     dog.state = "Odafut... 🐕";
     
-    // 1. Odafutás a tálhoz
     const animateToBowl = () => {
         let dx = targetX - dog.x; 
         let dy = targetY - dog.y;
-        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
             dog.x += dx * 0.1; 
             dog.y += dy * 0.1;
             dog.currentImage = dogImages.walk;
             requestAnimationFrame(animateToBowl);
         } else {
-            // Megérkezett, elkezd enni/inni
             dog.state = stateText; 
             dog.currentImage = img;
             
             setTimeout(() => { 
-                // Evés/ivás után elindul vissza
                 animateBackToStart();
                 if (onComplete) onComplete();
             }, 2000);
         }
     };
 
-    // 2. Visszasétálás az eredeti kiindulási pontra
     const animateBackToStart = () => {
         let dx = dog.startX - dog.x; 
         let dy = dog.startY - dog.y;
-        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
             dog.x += dx * 0.1; 
             dog.y += dy * 0.1;
             dog.currentImage = dogImages.walk;
             requestAnimationFrame(animateBackToStart);
         } else {
-            // Visszaért a helyére, visszaáll alapba
             dog.state = "Alap (Idle)"; 
             dog.currentImage = dogImages.idle;
             dog.x = dog.startX;
