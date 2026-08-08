@@ -1,173 +1,114 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Belső fix felbontás beállítása (klasszikus retro 4:3)
 canvas.width = 384;
 canvas.height = 288;
 
-// Különálló képek betöltése
-const yardImg = new Image();
-yardImg.src = "assets/yard.png";
+// Képek betöltése
+const yardImg = new Image(); yardImg.src = "assets/yard.png";
 
+// Tálak képei
+const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
+const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
+const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
+const bowlFoodEmptyImg = new Image(); bowlFoodEmptyImg.src = "assets/tál_kaja_üres.png";
+
+// Kutyus képei
 const dogImages = {
-    idle: new Image(),
-    angry: new Image(),
-    belly: new Image(),
-    walk: new Image()
+    idle: new Image(), angry: new Image(), belly: new Image(),
+    walk: new Image(), eating: new Image(), drinking: new Image()
 };
-
 dogImages.idle.src = "assets/dog_idle.png";
 dogImages.angry.src = "assets/dog_angry.png";
 dogImages.belly.src = "assets/dog_belly.png";
 dogImages.walk.src = "assets/dog_walk.png";
+dogImages.eating.src = "assets/dog_eating.png";
+dogImages.drinking.src = "assets/dog_drinking.png";
 
-// Kutyus objektum az adatokkal és pozícióval
-let dog = {
-    x: 150,
-    y: 160,
-    width: 48,
-    height: 48,
-    state: "Alap (Idle)",
-    currentImage: dogImages.idle // Alapértelmezett kép
+let dog = { x: 150, y: 160, width: 48, height: 48, state: "Alap (Idle)", currentImage: dogImages.idle };
+
+// Tálak objektum állapottal
+const bowls = {
+    water: { x: 50, y: 200, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    food: { x: 280, y: 200, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
-// Várjuk meg, amíg minden kép betöltődik, mielőtt elindítjuk a ciklust
-let totalImages = 5;
 let imagesLoaded = 0;
+const totalImages = 10;
+function checkLoad() { if (++imagesLoaded === totalImages) gameLoop(); }
+yardImg.onload = checkLoad;
+bowlWaterImg.onload = checkLoad; bowlWaterEmptyImg.onload = checkLoad;
+bowlFoodImg.onload = checkLoad; bowlFoodEmptyImg.onload = checkLoad;
+Object.values(dogImages).forEach(img => img.onload = checkLoad);
 
-function imageLoadedCheck() {
-    imagesLoaded++;
-    if (imagesLoaded === totalImages) {
-        gameLoop();
-    }
-}
-
-yardImg.onload = imageLoadedCheck;
-Object.values(dogImages).forEach(img => img.onload = imageLoadedCheck);
-
-// Fő Játék Ciklus (Loop)
 function gameLoop() {
-    // 1. Udvar háttér kirajzolása
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
-
-    // 2. Kutyus kirajzolása az aktuális képpel
-    ctx.drawImage(
-        dog.currentImage, 
-        dog.x, dog.y, dog.width, dog.height
-    );
-
-    // 3. Állapot szöveg megjelenítése retro fekete árnyékkal
-    ctx.fillStyle = "#000";
-    ctx.font = "12px monospace";
-    ctx.fillText(`Állapot: ${dog.state}`, 11, 21);
-    ctx.fillStyle = "#fff";
+    
+    // Tálak kirajzolása
+    ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, 48, 48);
+    ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, 48, 48);
+    
+    // Kutyus
+    ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
+    
+    ctx.fillStyle = "#fff"; ctx.font = "12px monospace";
     ctx.fillText(`Állapot: ${dog.state}`, 10, 20);
-
     requestAnimationFrame(gameLoop);
 }
 
-// --- INTERAKCIÓK ÉS VEZÉRLÉS ---
-
-let pressTimer;
-let isLongPress = false;
-
-// Kattintás / Érintés kezdete
+// Interakciók
 canvas.addEventListener("mousedown", (e) => startInteraction(e));
-canvas.addEventListener("touchstart", (e) => {
-    startInteraction(e.touches[0]);
-    e.preventDefault();
-});
+canvas.addEventListener("touchstart", (e) => startInteraction(e.touches[0]));
 
 function startInteraction(e) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
+    const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-    // Ha a kutyusra kattintottak
-    if (
-        clickX >= dog.x &&
-        clickX <= dog.x + dog.width &&
-        clickY >= dog.y &&
-        clickY <= dog.y + dog.height
-    ) {
-        isLongPress = false;
-        
-        // Hosszú nyomás időzítő (Simizés)
-        pressTimer = setTimeout(() => {
-            isLongPress = true;
-            dog.state = "Hasra fekszik... 😊";
-            dog.currentImage = dogImages.belly;
-        }, 500);
-    }
-}
+    // Tál ellenőrzés
+    Object.values(bowls).forEach(bowl => {
+        if (clickX >= bowl.x && clickX <= bowl.x + 48 && clickY >= bowl.y && clickY <= bowl.y + 48) {
+            if (!bowl.isFull) {
+                // Megtöltés
+                bowl.isFull = true;
+                bowl.img = bowl.fullImg;
+            } else {
+                // Evés/Ivás indítása
+                const state = (bowl === bowls.food) ? "Eszik... 🍖" : "Iszik... 💧";
+                const img = (bowl === bowls.food) ? dogImages.eating : dogImages.drinking;
+                
+                moveDogTo(bowl.x, bowl.y, state, img, () => {
+                    bowl.isFull = false;
+                    bowl.img = bowl.emptyImg;
+                });
+            }
+        }
+    });
 
-// Kattintás / Érintés vége
-canvas.addEventListener("mouseup", () => endInteraction());
-canvas.addEventListener("touchend", () => endInteraction());
-
-function endInteraction() {
-    clearTimeout(pressTimer);
-    
-    // Rövid kattintás (Megsértődés)
-    if (!isLongPress && dog.state === "Alap (Idle)") {
+    // Kutyusra kattintás (Megsértődés)
+    if (clickX >= dog.x && clickX <= dog.x + dog.width && clickY >= dog.y && clickY <= dog.y + dog.height) {
         dog.state = "Megsértődött! 💢";
         dog.currentImage = dogImages.angry;
-        
-        setTimeout(() => {
-            dog.state = "Alap (Idle)";
-            dog.currentImage = dogImages.idle;
-        }, 1500);
-    } else if (isLongPress) {
-        // Simizés vége
-        isLongPress = false;
-        dog.state = "Alap (Idle)";
-        dog.currentImage = dogImages.idle;
+        setTimeout(() => { dog.state = "Alap (Idle)"; dog.currentImage = dogImages.idle; }, 1500);
     }
 }
 
-// Sima odafuttató függvény koordinátákra
-function moveDogTo(targetX, targetY, customState, imgAsset) {
-    dog.state = customState;
-    dog.currentImage = imgAsset;
-
-    const animateMove = () => {
-        let dx = targetX - dog.x;
-        let dy = targetY - dog.y;
-        
+function moveDogTo(targetX, targetY, stateText, img, onComplete) {
+    dog.state = "Odafut... 🐕";
+    const animate = () => {
+        let dx = targetX - dog.x; let dy = targetY - dog.y;
         if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-            dog.x += dx * 0.08;
-            dog.y += dy * 0.08;
-            requestAnimationFrame(animateMove);
+            dog.x += dx * 0.1; dog.y += dy * 0.1;
+            dog.currentImage = dogImages.walk;
+            requestAnimationFrame(animate);
         } else {
-            dog.x = targetX;
-            dog.y = targetY;
-            dog.state = "Alap (Idle)";
-            dog.currentImage = dogImages.idle;
+            dog.state = stateText; dog.currentImage = img;
+            setTimeout(() => { 
+                dog.state = "Alap (Idle)"; dog.currentImage = dogImages.idle;
+                if (onComplete) onComplete();
+            }, 2000);
         }
     };
-    animateMove();
+    animate();
 }
-
-// UI Gombok eseményei
-document.getElementById("btn-whistle").addEventListener("click", () => {
-    moveDogTo(150, 160, "Odafut a sípra! 📯", dogImages.walk);
-});
-
-document.getElementById("btn-food").addEventListener("click", () => {
-    moveDogTo(80, 180, "Eszik a tálból... 🍖", dogImages.walk);
-});
-
-document.getElementById("btn-water").addEventListener("click", () => {
-    moveDogTo(250, 180, "Iszik a tálból... 💧", dogImages.walk);
-});
-
-// Biztos ami biztos fallback, ha a képek lassabban töltenének
-setTimeout(() => {
-    if (imagesLoaded < totalImages) {
-        console.log("Képek betöltési időtúllépés, játék indítása kényszerítve.");
-        gameLoop();
-    }
-}, 1500);
