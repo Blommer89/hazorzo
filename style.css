@@ -20,6 +20,6 @@ body {
 canvas {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Megőrzi az arányokat, nem nyújtja a képet */
+    object-fit: contain;
     image-rendering: pixelated;
 }
