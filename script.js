@@ -5,7 +5,7 @@ canvas.width = 1080;
 canvas.height = 2340;
 
 const yardImg = new Image(); yardImg.src = "assets/yard.png";
-const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png"; // Új kutyaház kép
+const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
 const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
 const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
@@ -14,7 +14,7 @@ const bowlFoodEmptyImg = new Image(); bowlFoodEmptyImg.src = "assets/tál_kaja_�
 const dogImages = {
     idle: new Image(), angry: new Image(), belly: new Image(),
     walk: new Image(), eating: new Image(), drinking: new Image(),
-    bark: new Image() // Új ugató kép
+    bark: new Image()
 };
 dogImages.idle.src = "assets/dog_idle.png";
 dogImages.angry.src = "assets/dog_angry.png";
@@ -22,7 +22,7 @@ dogImages.belly.src = "assets/dog_belly.png";
 dogImages.walk.src = "assets/dog_walk.png";
 dogImages.eating.src = "assets/dog_eating.png";
 dogImages.drinking.src = "assets/dog_drinking.png";
-dogImages.bark.src = "assets/dog_bark.png"; // Új ugató kép betöltése
+dogImages.bark.src = "assets/dog_bark.png";
 
 let dog = { 
     x: 415, y: 1650, 
@@ -33,7 +33,6 @@ let dog = {
     isBusy: false 
 };
 
-// Kutyaház pozíciója a bal felső sarokban (szükség szerint finomhangolhatod a x, y, width, height értékeket)
 const doghouse = {
     x: 80, y: 300, width: 350, height: 350
 };
@@ -53,7 +52,7 @@ function startGame() {
 setTimeout(startGame, 1000);
 
 let imagesLoaded = 0;
-const totalImages = 12; // 1 yard + 1 kutyaház + 4 tál + 6 kutya kép = 12 összesen
+const totalImages = 12;
 function checkLoad() {
     imagesLoaded++;
     if (imagesLoaded >= totalImages) {
@@ -75,15 +74,14 @@ Object.values(dogImages).forEach(img => {
 let returnTimeout = null;
 let touchStartX = 0;
 let touchStartY = 0;
+let maxDistance = 0;
+let touchedOnDog = false;
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Udvar és kutyaház kirajzolása
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
-    
-    // Tálak és kutya kirajzolása
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
@@ -111,6 +109,28 @@ canvas.addEventListener("pointerdown", (e) => {
     const coords = getCanvasCoords(e);
     touchStartX = coords.x;
     touchStartY = coords.y;
+    maxDistance = 0;
+
+    const padding = 30; // Kicsit nagyobb margó a könnyebb érintésért
+    if (
+        touchStartX >= dog.x - padding && 
+        touchStartX <= dog.x + dog.width + padding && 
+        touchStartY >= dog.y - padding && 
+        touchStartY <= dog.y + dog.height + padding
+    ) {
+        touchedOnDog = true;
+    } else {
+        touchedOnDog = false;
+    }
+});
+
+canvas.addEventListener("pointermove", (e) => {
+    if (!touchedOnDog) return;
+    const coords = getCanvasCoords(e);
+    const currentDistance = Math.hypot(coords.x - touchStartX, coords.y - touchStartY);
+    if (currentDistance > maxDistance) {
+        maxDistance = currentDistance;
+    }
 });
 
 canvas.addEventListener("pointerup", (e) => {
@@ -123,20 +143,13 @@ canvas.addEventListener("pointerup", (e) => {
         returnTimeout = null;
     }
 
-    const distance = Math.hypot(moveX - touchStartX, moveY - touchStartY);
-    const padding = 20;
-
-    // 1. Kutyus érintése
-    if (
-        touchStartX >= dog.x - padding && 
-        touchStartX <= dog.x + dog.width + padding && 
-        touchStartY >= dog.y - padding && 
-        touchStartY <= dog.y + dog.height + padding
-    ) {
+    // 1. Ha a kutyán indult az érintés
+    if (touchedOnDog) {
+        touchedOnDog = false;
         if (dog.isBusy) return;
 
-        // Simogatás (húzás) -> Hátára fekszik
-        if (distance > 40) {
+        // Ha elhúzta az ujját (simogatás / görgetés jellegű mozdulat) -> Hátára fekszik
+        if (maxDistance > 30) {
             dog.isBusy = true;
             dog.state = "Simogatás... 🥰"; 
             dog.currentImage = dogImages.belly;
@@ -147,7 +160,7 @@ canvas.addEventListener("pointerup", (e) => {
             }, 2000);
             return;
         } 
-        // Megbökés -> Haragszik
+        // Ha csak simán rákoppintott (megbökte) -> Haragszik
         else {
             dog.isBusy = true;
             dog.state = "Megsértődött! 💢"; 
@@ -186,7 +199,7 @@ canvas.addEventListener("pointerup", (e) => {
 
     if (clickedBowl) return;
 
-    // 3. Üres udvarra bökés -> Odaszalad és ugat (az új dog_bark képpel)
+    // 3. Üres udvarra bökés -> Odaszalad és ugat
     if (dog.isBusy) return;
     
     let targetX = moveX - dog.width / 2;
@@ -194,7 +207,7 @@ canvas.addEventListener("pointerup", (e) => {
 
     moveDogToCustom(targetX, targetY, () => {
         dog.state = "Vau! Vau! 🐕‍🦺";
-        dog.currentImage = dogImages.bark; // Itt vált át az ugató képre
+        dog.currentImage = dogImages.bark;
 
         returnTimeout = setTimeout(() => {
             animateBackToStart();
