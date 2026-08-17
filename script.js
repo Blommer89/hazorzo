@@ -21,7 +21,6 @@ dogImages.walk.src = "assets/dog_walk.png";
 dogImages.eating.src = "assets/dog_eating.png";
 dogImages.drinking.src = "assets/dog_drinking.png";
 
-// Kutyus feljebb helyezve (y: 1650), hogy távolabb legyen a tálaktól
 let dog = { 
     x: 415, y: 1650, 
     startX: 415, startY: 1650, 
@@ -31,7 +30,6 @@ let dog = {
     isBusy: false 
 };
 
-// Tálak lekicsinyítve (180x180) és lejjebb pozícionálva
 const bowls = {
     water: { x: 120, y: 1980, width: 180, height: 180, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
     food: { x: 780, y: 1980, width: 180, height: 180, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
@@ -63,13 +61,21 @@ canvas.addEventListener("click", (e) => {
     if (dog.isBusy) return;
 
     const rect = canvas.getBoundingClientRect();
+    
+    // Pontosabb skálázási számítás a teljes képernyős canvas-hoz
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const clickX = (e.clientX - rect.left) * scaleX;
     const clickY = (e.clientY - rect.top) * scaleY;
 
-    // 1. Kutyus ellenőrzése (Simizés / Megsértődés)
-    if (clickX >= dog.x && clickX <= dog.x + dog.width && clickY >= dog.y && clickY <= dog.y + dog.height) {
+    // 1. Kutyus ellenőrzése (kicsit kibővített "hitboxszal", hogy könnyebb legyen eltalálni)
+    const padding = 20; // Extra margó a könnyebb érintésért
+    if (
+        clickX >= dog.x - padding && 
+        clickX <= dog.x + dog.width + padding && 
+        clickY >= dog.y - padding && 
+        clickY <= dog.y + dog.height + padding
+    ) {
         dog.isBusy = true;
         dog.state = "Megsértődött! 💢"; 
         dog.currentImage = dogImages.angry;
