@@ -1,6 +1,6 @@
 {
-  "name": "8-Bit Berni Udvar",
-  "short_name": "Berni Kutya",
+  "name": "Házőrző",
+  "short_name": "Házőrző",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#222222",
