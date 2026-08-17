@@ -35,7 +35,6 @@ const bowls = {
     food: { x: 780, y: 1980, width: 180, height: 180, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
-// Biztos ami biztos, elindítjuk a játékot 1 másodperc után akkor is, ha valami lassan Töltődne
 let gameStarted = false;
 function startGame() {
     if (!gameStarted) {
@@ -55,7 +54,7 @@ function checkLoad() {
 }
 
 yardImg.onload = checkLoad;
-yardImg.onerror = checkLoad; // Ha hiba van is továbblép
+yardImg.onerror = checkLoad;
 [bowlWaterImg, bowlWaterEmptyImg, bowlFoodImg, bowlFoodEmptyImg].forEach(img => {
     img.onload = checkLoad;
     img.onerror = checkLoad;
@@ -72,17 +71,11 @@ let touchStartY = 0;
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Udvar kirajzolása (ha betöltődött)
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
-    
-    // Tálak kirajzolása
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
-    
-    // Kutya kirajzolása
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
     
-    // Állapot szöveg
     ctx.fillStyle = "#fff"; 
     ctx.font = "bold 50px monospace";
     ctx.fillText(`Állapot: ${dog.state}`, 80, 150);
@@ -224,7 +217,7 @@ function moveDogTo(targetX, targetY, stateText, img, onComplete) {
     animateToBowl();
 }
 
-function moveDogToCustom(targetX, targetY, on llegue) {
+function moveDogToCustom(targetX, targetY, onComplete) {
     dog.isBusy = true;
     dog.state = "Odaszalad... 🏃‍♂️";
 
@@ -239,7 +232,7 @@ function moveDogToCustom(targetX, targetY, on llegue) {
         } else {
             dog.x = targetX;
             dog.y = targetY;
-            if (llegue) llegue();
+            if (onComplete) onComplete();
         }
     };
     animateCustom();
