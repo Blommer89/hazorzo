@@ -44,7 +44,7 @@ const doghouse = {
     x: 650, y: 300, width: 350, height: 350
 };
 
-// Kisebb tálak a kutyaház előtt (jobb oldalon alatta)
+// Kisebb tálak a kutyaház előtt
 const bowls = {
     water: { x: 680, y: 700, width: 130, height: 130, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
     food: { x: 840, y: 700, width: 130, height: 130, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
@@ -89,12 +89,10 @@ let touchedOnDog = false;
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Háttér elemek (Udvar, Fa balra, Kutyaház jobbra)
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(treeImg, tree.x, tree.y, tree.width, tree.height);
     ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
     
-    // Kisebb tálak és Kutya
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
@@ -157,7 +155,6 @@ canvas.addEventListener("pointerup", (e) => {
         touchedOnDog = false;
         if (dog.isBusy) return;
 
-        // Simogatás (húzás) -> Hátára fekszik
         if (maxDistance > 30) {
             dog.isBusy = true;
             dog.currentImage = dogImages.belly;
@@ -166,9 +163,7 @@ canvas.addEventListener("pointerup", (e) => {
                 dog.isBusy = false;
             }, 2000);
             return;
-        } 
-        // Megbökés -> Haragszik
-        else {
+        } else {
             dog.isBusy = true;
             dog.currentImage = dogImages.angry;
             setTimeout(() => { 
@@ -179,15 +174,16 @@ canvas.addEventListener("pointerup", (e) => {
         }
     }
 
-    // 2. Fára kattintás (bal felső sarok) -> Odaszalad és pisil
+    // 2. Fára kattintás -> Feljebb áll meg a fa törzsénél
     if (
         moveX >= tree.x && moveX <= tree.x + tree.width && 
         moveY >= tree.y && moveY <= tree.y + tree.height
     ) {
         if (dog.isBusy) return;
         
-        let targetX = tree.x + (tree.width / 2) - (dog.width / 2);
-        let targetY = tree.y + tree.height - 100;
+        // A fa alól feljebb toltuk (- 180 pixel helyett - 250 pixel, így feljebb áll meg)
+        let targetX = tree.x + (tree.width / 2) - (dog.width / 2) + 40;
+        let targetY = tree.y + tree.height - 230;
 
         moveDogToCustom(targetX, targetY, () => {
             dog.currentImage = dogImages.pee;
@@ -213,7 +209,11 @@ canvas.addEventListener("pointerup", (e) => {
                 dog.isBusy = true;
                 const imgAsset = (bowl === bowls.food) ? dogImages.eating : dogImages.drinking;
                 
-                moveDogTo(bowl.x, bowl.y, imgAsset, () => { 
+                // A tálak fölé pozícionáljuk (- 130 helyett - 200 pixel, így a tálba esik a feje)
+                let targetX = bowl.x + (bowl.width / 2) - (dog.width / 2);
+                let targetY = bowl.y - 120;
+
+                moveDogToExplicit(targetX, targetY, imgAsset, () => { 
                     bowl.isFull = false; 
                     bowl.img = bowl.emptyImg; 
                 });
@@ -238,7 +238,7 @@ canvas.addEventListener("pointerup", (e) => {
     });
 });
 
-function moveDogTo(targetX, targetY, img, onComplete) {
+function moveDogToExplicit(targetX, targetY, img, onComplete) {
     dog.isBusy = true;
     
     const animateToBowl = () => {
