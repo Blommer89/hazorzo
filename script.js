@@ -6,7 +6,7 @@ canvas.height = 2340;
 
 const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
-const treeImg = new Image(); treeImg.src = "assets/tree.png"; // Új fa kép
+const treeImg = new Image(); treeImg.src = "assets/tree.png";
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
 const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
 const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
@@ -15,7 +15,7 @@ const bowlFoodEmptyImg = new Image(); bowlFoodEmptyImg.src = "assets/tál_kaja_�
 const dogImages = {
     idle: new Image(), angry: new Image(), belly: new Image(),
     walk: new Image(), eating: new Image(), drinking: new Image(),
-    bark: new Image(), pee: new Image() // Új pisilő kép
+    bark: new Image(), pee: new Image()
 };
 dogImages.idle.src = "assets/dog_idle.png";
 dogImages.angry.src = "assets/dog_angry.png";
@@ -24,30 +24,30 @@ dogImages.walk.src = "assets/dog_walk.png";
 dogImages.eating.src = "assets/dog_eating.png";
 dogImages.drinking.src = "assets/dog_drinking.png";
 dogImages.bark.src = "assets/dog_bark.png";
-dogImages.pee.src = "assets/dog_pee.png"; // Új pisilő kép betöltése
+dogImages.pee.src = "assets/dog_pee.png";
 
 let dog = { 
     x: 415, y: 1650, 
     startX: 415, startY: 1650, 
     width: 250, height: 250, 
-    state: "Alap (Idle)", 
     currentImage: dogImages.idle,
     isBusy: false 
 };
 
-// Kutyaház a bal felső sarokban
-const doghouse = {
-    x: 80, y: 300, width: 350, height: 350
-};
-
-// Fa a jobb felső sarokban (igény szerint finomhangolhatod a méretet és pozíciót)
+// Fa a bal felső sarokban
 const tree = {
-    x: 650, y: 250, width: 350, height: 450
+    x: 80, y: 250, width: 350, height: 450
 };
 
+// Kutyaház a jobb felső sarokban
+const doghouse = {
+    x: 650, y: 300, width: 350, height: 350
+};
+
+// Kisebb tálak a kutyaház előtt (jobb oldalon alatta)
 const bowls = {
-    water: { x: 120, y: 1980, width: 180, height: 180, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
-    food: { x: 780, y: 1980, width: 180, height: 180, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
+    water: { x: 680, y: 700, width: 130, height: 130, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    food: { x: 840, y: 700, width: 130, height: 130, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
 let gameStarted = false;
@@ -60,7 +60,7 @@ function startGame() {
 setTimeout(startGame, 1000);
 
 let imagesLoaded = 0;
-const totalImages = 14; // 1 yard + 1 kutyaház + 1 fa + 4 tál + 7 kutya kép = 14 összesen
+const totalImages = 14;
 function checkLoad() {
     imagesLoaded++;
     if (imagesLoaded >= totalImages) {
@@ -89,19 +89,15 @@ let touchedOnDog = false;
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Háttér elemek (Udvar, Kutyaház, Fa)
+    // Háttér elemek (Udvar, Fa balra, Kutyaház jobbra)
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
-    ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
     ctx.drawImage(treeImg, tree.x, tree.y, tree.width, tree.height);
+    ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
     
-    // Tálak és Kutya
+    // Kisebb tálak és Kutya
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
-    
-    ctx.fillStyle = "#fff"; 
-    ctx.font = "bold 50px monospace";
-    ctx.fillText(`Állapot: ${dog.state}`, 80, 150);
     
     requestAnimationFrame(gameLoop);
 }
@@ -164,10 +160,8 @@ canvas.addEventListener("pointerup", (e) => {
         // Simogatás (húzás) -> Hátára fekszik
         if (maxDistance > 30) {
             dog.isBusy = true;
-            dog.state = "Simogatás... 🥰"; 
             dog.currentImage = dogImages.belly;
             setTimeout(() => { 
-                dog.state = "Alap (Idle)"; 
                 dog.currentImage = dogImages.idle; 
                 dog.isBusy = false;
             }, 2000);
@@ -176,10 +170,8 @@ canvas.addEventListener("pointerup", (e) => {
         // Megbökés -> Haragszik
         else {
             dog.isBusy = true;
-            dog.state = "Megsértődött! 💢"; 
             dog.currentImage = dogImages.angry;
             setTimeout(() => { 
-                dog.state = "Alap (Idle)"; 
                 dog.currentImage = dogImages.idle; 
                 dog.isBusy = false;
             }, 1500);
@@ -187,19 +179,17 @@ canvas.addEventListener("pointerup", (e) => {
         }
     }
 
-    // 2. Fára kattintás -> Odafut és pisil
+    // 2. Fára kattintás (bal felső sarok) -> Odaszalad és pisil
     if (
         moveX >= tree.x && moveX <= tree.x + tree.width && 
         moveY >= tree.y && moveY <= tree.y + tree.height
     ) {
         if (dog.isBusy) return;
         
-        // A fa elé vagy mellé szalad (a fa alatti részre)
         let targetX = tree.x + (tree.width / 2) - (dog.width / 2);
         let targetY = tree.y + tree.height - 100;
 
         moveDogToCustom(targetX, targetY, () => {
-            dog.state = "Pisi idő... 💧🐕";
             dog.currentImage = dogImages.pee;
 
             returnTimeout = setTimeout(() => {
@@ -221,10 +211,9 @@ canvas.addEventListener("pointerup", (e) => {
                 bowl.img = bowl.fullImg;
             } else {
                 dog.isBusy = true;
-                const stateText = (bowl === bowls.food) ? "Eszik... 🍖" : "Iszik... 💧";
                 const imgAsset = (bowl === bowls.food) ? dogImages.eating : dogImages.drinking;
                 
-                moveDogTo(bowl.x, bowl.y, stateText, imgAsset, () => { 
+                moveDogTo(bowl.x, bowl.y, imgAsset, () => { 
                     bowl.isFull = false; 
                     bowl.img = bowl.emptyImg; 
                 });
@@ -241,7 +230,6 @@ canvas.addEventListener("pointerup", (e) => {
     let targetY = moveY - dog.height / 2;
 
     moveDogToCustom(targetX, targetY, () => {
-        dog.state = "Vau! Vau! 🐕‍🦺";
         dog.currentImage = dogImages.bark;
 
         returnTimeout = setTimeout(() => {
@@ -250,9 +238,8 @@ canvas.addEventListener("pointerup", (e) => {
     });
 });
 
-function moveDogTo(targetX, targetY, stateText, img, onComplete) {
+function moveDogTo(targetX, targetY, img, onComplete) {
     dog.isBusy = true;
-    dog.state = "Odafut... 🐕";
     
     const animateToBowl = () => {
         let dx = targetX - dog.x; 
@@ -265,7 +252,6 @@ function moveDogTo(targetX, targetY, stateText, img, onComplete) {
         } else {
             dog.x = targetX;
             dog.y = targetY;
-            dog.state = stateText; 
             dog.currentImage = img;
             
             setTimeout(() => { 
@@ -279,7 +265,6 @@ function moveDogTo(targetX, targetY, stateText, img, onComplete) {
 
 function moveDogToCustom(targetX, targetY, onComplete) {
     dog.isBusy = true;
-    dog.state = "Odaszalad... 🏃‍♂️";
 
     const animateCustom = () => {
         let dx = targetX - dog.x; 
@@ -300,7 +285,6 @@ function moveDogToCustom(targetX, targetY, onComplete) {
 
 function animateBackToStart() {
     dog.isBusy = true;
-    dog.state = "Visszasétál... 🏡";
 
     const stepBack = () => {
         let dx = dog.startX - dog.x; 
@@ -311,7 +295,6 @@ function animateBackToStart() {
             dog.currentImage = dogImages.walk;
             requestAnimationFrame(stepBack);
         } else {
-            dog.state = "Alap (Idle)"; 
             dog.currentImage = dogImages.idle;
             dog.x = dog.startX;
             dog.y = dog.startY;
