@@ -21,18 +21,20 @@ dogImages.walk.src = "assets/dog_walk.png";
 dogImages.eating.src = "assets/dog_eating.png";
 dogImages.drinking.src = "assets/dog_drinking.png";
 
+// Kutyus feljebb helyezve (y: 1650), hogy távolabb legyen a tálaktól
 let dog = { 
-    x: 415, y: 1800, 
-    startX: 415, startY: 1800, 
+    x: 415, y: 1650, 
+    startX: 415, startY: 1650, 
     width: 250, height: 250, 
     state: "Alap (Idle)", 
     currentImage: dogImages.idle,
     isBusy: false 
 };
 
+// Tálak lekicsinyítve (180x180) és lejjebb pozícionálva
 const bowls = {
-    water: { x: 100, y: 1900, width: 250, height: 250, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
-    food: { x: 730, y: 1900, width: 250, height: 250, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
+    water: { x: 120, y: 1980, width: 180, height: 180, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    food: { x: 780, y: 1980, width: 180, height: 180, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
 let imagesLoaded = 0;
@@ -66,7 +68,7 @@ canvas.addEventListener("click", (e) => {
     const clickX = (e.clientX - rect.left) * scaleX;
     const clickY = (e.clientY - rect.top) * scaleY;
 
-    // 1. Kutyus ellenőrzése
+    // 1. Kutyus ellenőrzése (Simizés / Megsértődés)
     if (clickX >= dog.x && clickX <= dog.x + dog.width && clickY >= dog.y && clickY <= dog.y + dog.height) {
         dog.isBusy = true;
         dog.state = "Megsértődött! 💢"; 
