@@ -118,7 +118,8 @@ canvas.addEventListener("pointerdown", (e) => {
     touchStartY = coords.y;
     maxDistance = 0;
 
-    const padding = 30;
+    // Nagyobb, bőkezűbb érintési keret a kutyus körül (40 pixel margó)
+    const padding = 40;
     if (
         touchStartX >= dog.x - padding && 
         touchStartX <= dog.x + dog.width + padding && 
@@ -150,38 +151,40 @@ canvas.addEventListener("pointerup", (e) => {
         returnTimeout = null;
     }
 
-    // 1. Kutyus simogatása vagy bökése
+    // 1. HA A KUTYÁRA NYOMTUNK (Függetlenítve a többi elemtől)
     if (touchedOnDog) {
         touchedOnDog = false;
         if (dog.isBusy) return;
 
-        if (maxDistance > 30) {
+        // Ha elhúzta az ujját legalább 15 pixelre -> Simogatás (Hátra fekszik)
+        // (A 15 pixeles küszöböt lejjebb vettem, hogy sokkal könnyebben érzékelje a simítást!)
+        if (maxDistance > 15) {
             dog.isBusy = true;
             dog.currentImage = dogImages.belly;
             setTimeout(() => { 
                 dog.currentImage = dogImages.idle; 
                 dog.isBusy = false;
             }, 2000);
-            return;
-        } else {
+        } 
+        // Ha alig mozdult el az ujj -> Megbökés (Haragszik)
+        else {
             dog.isBusy = true;
             dog.currentImage = dogImages.angry;
             setTimeout(() => { 
                 dog.currentImage = dogImages.idle; 
                 dog.isBusy = false;
             }, 1500);
-            return;
         }
+        return; // Itt megállunk, nem fut tovább a tálak vagy a fa felé!
     }
 
-    // 2. Fára kattintás -> Feljebb áll meg a fa törzsénél
+    // 2. Fára kattintás
     if (
         moveX >= tree.x && moveX <= tree.x + tree.width && 
         moveY >= tree.y && moveY <= tree.y + tree.height
     ) {
         if (dog.isBusy) return;
         
-        // A fa alól feljebb toltuk (- 180 pixel helyett - 250 pixel, így feljebb áll meg)
         let targetX = tree.x + (tree.width / 2) - (dog.width / 2) + 40;
         let targetY = tree.y + tree.height - 230;
 
@@ -209,7 +212,6 @@ canvas.addEventListener("pointerup", (e) => {
                 dog.isBusy = true;
                 const imgAsset = (bowl === bowls.food) ? dogImages.eating : dogImages.drinking;
                 
-                // A tálak fölé pozícionáljuk (- 130 helyett - 200 pixel, így a tálba esik a feje)
                 let targetX = bowl.x + (bowl.width / 2) - (dog.width / 2);
                 let targetY = bowl.y - 120;
 
