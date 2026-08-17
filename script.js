@@ -5,6 +5,7 @@ canvas.width = 1080;
 canvas.height = 2340;
 
 const yardImg = new Image(); yardImg.src = "assets/yard.png";
+const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png"; // Új kutyaház kép
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
 const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
 const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
@@ -12,7 +13,8 @@ const bowlFoodEmptyImg = new Image(); bowlFoodEmptyImg.src = "assets/tál_kaja_�
 
 const dogImages = {
     idle: new Image(), angry: new Image(), belly: new Image(),
-    walk: new Image(), eating: new Image(), drinking: new Image()
+    walk: new Image(), eating: new Image(), drinking: new Image(),
+    bark: new Image() // Új ugató kép
 };
 dogImages.idle.src = "assets/dog_idle.png";
 dogImages.angry.src = "assets/dog_angry.png";
@@ -20,6 +22,7 @@ dogImages.belly.src = "assets/dog_belly.png";
 dogImages.walk.src = "assets/dog_walk.png";
 dogImages.eating.src = "assets/dog_eating.png";
 dogImages.drinking.src = "assets/dog_drinking.png";
+dogImages.bark.src = "assets/dog_bark.png"; // Új ugató kép betöltése
 
 let dog = { 
     x: 415, y: 1650, 
@@ -28,6 +31,11 @@ let dog = {
     state: "Alap (Idle)", 
     currentImage: dogImages.idle,
     isBusy: false 
+};
+
+// Kutyaház pozíciója a bal felső sarokban (szükség szerint finomhangolhatod a x, y, width, height értékeket)
+const doghouse = {
+    x: 80, y: 300, width: 350, height: 350
 };
 
 const bowls = {
@@ -45,7 +53,7 @@ function startGame() {
 setTimeout(startGame, 1000);
 
 let imagesLoaded = 0;
-const totalImages = 10;
+const totalImages = 12; // 1 yard + 1 kutyaház + 4 tál + 6 kutya kép = 12 összesen
 function checkLoad() {
     imagesLoaded++;
     if (imagesLoaded >= totalImages) {
@@ -53,8 +61,8 @@ function checkLoad() {
     }
 }
 
-yardImg.onload = checkLoad;
-yardImg.onerror = checkLoad;
+yardImg.onload = checkLoad; yardImg.onerror = checkLoad;
+doghouseImg.onload = checkLoad; doghouseImg.onerror = checkLoad;
 [bowlWaterImg, bowlWaterEmptyImg, bowlFoodImg, bowlFoodEmptyImg].forEach(img => {
     img.onload = checkLoad;
     img.onerror = checkLoad;
@@ -71,7 +79,11 @@ let touchStartY = 0;
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Udvar és kutyaház kirajzolása
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
+    
+    // Tálak és kutya kirajzolása
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
@@ -174,7 +186,7 @@ canvas.addEventListener("pointerup", (e) => {
 
     if (clickedBowl) return;
 
-    // 3. Üres udvarra bökés -> Odaszalad, ugat kettőt
+    // 3. Üres udvarra bökés -> Odaszalad és ugat (az új dog_bark képpel)
     if (dog.isBusy) return;
     
     let targetX = moveX - dog.width / 2;
@@ -182,7 +194,7 @@ canvas.addEventListener("pointerup", (e) => {
 
     moveDogToCustom(targetX, targetY, () => {
         dog.state = "Vau! Vau! 🐕‍🦺";
-        dog.currentImage = dogImages.angry;
+        dog.currentImage = dogImages.bark; // Itt vált át az ugató képre
 
         returnTimeout = setTimeout(() => {
             animateBackToStart();
