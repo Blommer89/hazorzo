@@ -34,17 +34,9 @@ let dog = {
     isBusy: false 
 };
 
-// Fa a bal felső sarokban
-const tree = {
-    x: 80, y: 250, width: 350, height: 450
-};
+const tree = { x: 80, y: 250, width: 350, height: 450 };
+const doghouse = { x: 650, y: 300, width: 350, height: 350 };
 
-// Kutyaház a jobb felső sarokban
-const doghouse = {
-    x: 650, y: 300, width: 350, height: 350
-};
-
-// Kisebb tálak a kutyaház előtt
 const bowls = {
     water: { x: 680, y: 700, width: 130, height: 130, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
     food: { x: 840, y: 700, width: 130, height: 130, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
@@ -57,7 +49,6 @@ function startGame() {
         gameLoop();
     }
 }
-setTimeout(startGame, 1000);
 
 let imagesLoaded = 0;
 const totalImages = 14;
@@ -80,6 +71,10 @@ Object.values(dogImages).forEach(img => {
     img.onerror = checkLoad;
 });
 
+// Biztonsági indítás, ha valamiért beragadna a betöltés
+setTimeout(startGame, 1500);
+
+let currentAnimationId = null;
 let returnTimeout = null;
 let touchStartX = 0;
 let touchStartY = 0;
@@ -118,7 +113,6 @@ canvas.addEventListener("pointerdown", (e) => {
     touchStartY = coords.y;
     maxDistance = 0;
 
-    // Nagyobb, bőkezűbb érintési keret a kutyus körül (40 pixel margó)
     const padding = 40;
     if (
         touchStartX >= dog.x - padding && 
@@ -150,14 +144,15 @@ canvas.addEventListener("pointerup", (e) => {
         clearTimeout(returnTimeout);
         returnTimeout = null;
     }
+    if (currentAnimationId) {
+        cancelAnimationFrame(currentAnimationId);
+        currentAnimationId = null;
+    }
 
-    // 1. HA A KUTYÁRA NYOMTUNK (Függetlenítve a többi elemtől)
     if (touchedOnDog) {
         touchedOnDog = false;
         if (dog.isBusy) return;
 
-        // Ha elhúzta az ujját legalább 15 pixelre -> Simogatás (Hátra fekszik)
-        // (A 15 pixeles küszöböt lejjebb vettem, hogy sokkal könnyebben érzékelje a simítást!)
         if (maxDistance > 15) {
             dog.isBusy = true;
             dog.currentImage = dogImages.belly;
@@ -165,9 +160,7 @@ canvas.addEventListener("pointerup", (e) => {
                 dog.currentImage = dogImages.idle; 
                 dog.isBusy = false;
             }, 2000);
-        } 
-        // Ha alig mozdult el az ujj -> Megbökés (Haragszik)
-        else {
+        } else {
             dog.isBusy = true;
             dog.currentImage = dogImages.angry;
             setTimeout(() => { 
@@ -175,10 +168,9 @@ canvas.addEventListener("pointerup", (e) => {
                 dog.isBusy = false;
             }, 1500);
         }
-        return; // Itt megállunk, nem fut tovább a tálak vagy a fa felé!
+        return;
     }
 
-    // 2. Fára kattintás
     if (
         moveX >= tree.x && moveX <= tree.x + tree.width && 
         moveY >= tree.y && moveY <= tree.y + tree.height
@@ -190,7 +182,6 @@ canvas.addEventListener("pointerup", (e) => {
 
         moveDogToCustom(targetX, targetY, () => {
             dog.currentImage = dogImages.pee;
-
             returnTimeout = setTimeout(() => {
                 animateBackToStart();
             }, 2500);
@@ -198,7 +189,6 @@ canvas.addEventListener("pointerup", (e) => {
         return;
     }
 
-    // 3. Tálak ellenőrzése
     let clickedBowl = false;
     Object.values(bowls).forEach(bowl => {
         if (moveX >= bowl.x && moveX <= bowl.x + bowl.width && moveY >= bowl.y && moveY <= bowl.y + bowl.height) {
@@ -225,7 +215,6 @@ canvas.addEventListener("pointerup", (e) => {
 
     if (clickedBowl) return;
 
-    // 4. Üres udvarra bökés -> Odaszalad és ugat
     if (dog.isBusy) return;
     
     let targetX = moveX - dog.width / 2;
@@ -233,7 +222,6 @@ canvas.addEventListener("pointerup", (e) => {
 
     moveDogToCustom(targetX, targetY, () => {
         dog.currentImage = dogImages.bark;
-
         returnTimeout = setTimeout(() => {
             animateBackToStart();
         }, 2000);
@@ -250,13 +238,13 @@ function moveDogToExplicit(targetX, targetY, img, onComplete) {
             dog.x += dx * 0.15; 
             dog.y += dy * 0.15;
             dog.currentImage = dogImages.walk;
-            requestAnimationFrame(animateToBowl);
+            currentAnimationId = requestAnimationFrame(animateToBowl);
         } else {
             dog.x = targetX;
             dog.y = targetY;
             dog.currentImage = img;
             
-            setTimeout(() => { 
+            returnTimeout = setTimeout(() => { 
                 animateBackToStart();
                 if (onComplete) onComplete();
             }, 2000);
@@ -275,7 +263,7 @@ function moveDogToCustom(targetX, targetY, onComplete) {
             dog.x += dx * 0.15; 
             dog.y += dy * 0.15;
             dog.currentImage = dogImages.walk;
-            requestAnimationFrame(animateCustom);
+            currentAnimationId = requestAnimationFrame(animateCustom);
         } else {
             dog.x = targetX;
             dog.y = targetY;
@@ -295,12 +283,13 @@ function animateBackToStart() {
             dog.x += dx * 0.15; 
             dog.y += dy * 0.15;
             dog.currentImage = dogImages.walk;
-            requestAnimationFrame(stepBack);
+            currentAnimationId = requestAnimationFrame(stepBack);
         } else {
             dog.currentImage = dogImages.idle;
             dog.x = dog.startX;
             dog.y = dog.startY;
             dog.isBusy = false;
+            currentAnimationId = null;
         }
     };
     stepBack();
