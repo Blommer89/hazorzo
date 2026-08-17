@@ -35,26 +35,54 @@ const bowls = {
     food: { x: 780, y: 1980, width: 180, height: 180, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
+// Biztos ami biztos, elindítjuk a játékot 1 másodperc után akkor is, ha valami lassan Töltődne
+let gameStarted = false;
+function startGame() {
+    if (!gameStarted) {
+        gameStarted = true;
+        gameLoop();
+    }
+}
+setTimeout(startGame, 1000);
+
 let imagesLoaded = 0;
 const totalImages = 10;
-function checkLoad() { if (++imagesLoaded === totalImages) gameLoop(); }
+function checkLoad() {
+    imagesLoaded++;
+    if (imagesLoaded >= totalImages) {
+        startGame();
+    }
+}
+
 yardImg.onload = checkLoad;
-[bowlWaterImg, bowlWaterEmptyImg, bowlFoodImg, bowlFoodEmptyImg].forEach(img => img.onload = checkLoad);
-Object.values(dogImages).forEach(img => img.onload = checkLoad);
+yardImg.onerror = checkLoad; // Ha hiba van is továbblép
+[bowlWaterImg, bowlWaterEmptyImg, bowlFoodImg, bowlFoodEmptyImg].forEach(img => {
+    img.onload = checkLoad;
+    img.onerror = checkLoad;
+});
+Object.values(dogImages).forEach(img => {
+    img.onload = checkLoad;
+    img.onerror = checkLoad;
+});
 
 let returnTimeout = null;
 let touchStartX = 0;
 let touchStartY = 0;
-let isDraggingOnDog = false;
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Udvar kirajzolása (ha betöltődött)
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
     
+    // Tálak kirajzolása
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
+    
+    // Kutya kirajzolása
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
     
+    // Állapot szöveg
     ctx.fillStyle = "#fff"; 
     ctx.font = "bold 50px monospace";
     ctx.fillText(`Állapot: ${dog.state}`, 80, 150);
@@ -62,7 +90,6 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Érintés / Egér lenyomás kezdete
 function getCanvasCoords(e) {
     const rect = canvas.getBoundingClientRect();
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
@@ -79,19 +106,6 @@ canvas.addEventListener("pointerdown", (e) => {
     const coords = getCanvasCoords(e);
     touchStartX = coords.x;
     touchStartY = coords.y;
-
-    const padding = 20;
-    // Megnézzük, hogy a kutyuson kezdődött-e az érintés
-    if (
-        touchStartX >= dog.x - padding && 
-        touchStartX <= dog.x + dog.width + padding && 
-        touchStartY >= dog.y - padding && 
-        touchStartY <= dog.y + dog.height + padding
-    ) {
-        isDraggingOnDog = true;
-    } else {
-        isDraggingOnDog = false;
-    }
 });
 
 canvas.addEventListener("pointerup", (e) => {
@@ -107,7 +121,7 @@ canvas.addEventListener("pointerup", (e) => {
     const distance = Math.hypot(moveX - touchStartX, moveY - touchStartY);
     const padding = 20;
 
-    // Ha a kutyuson történt az esemény
+    // 1. Kutyus érintése
     if (
         touchStartX >= dog.x - padding && 
         touchStartX <= dog.x + dog.width + padding && 
@@ -116,7 +130,7 @@ canvas.addEventListener("pointerup", (e) => {
     ) {
         if (dog.isBusy) return;
 
-        // Ha elhúzta az ujját (húzás / simogatás) -> Hátára fekszik
+        // Simogatás (húzás) -> Hátára fekszik
         if (distance > 40) {
             dog.isBusy = true;
             dog.state = "Simogatás... 🥰"; 
@@ -128,7 +142,7 @@ canvas.addEventListener("pointerup", (e) => {
             }, 2000);
             return;
         } 
-        // Ha csak simán rákoppintott / megbökte -> Haragszik
+        // Megbökés -> Haragszik
         else {
             dog.isBusy = true;
             dog.state = "Megsértődött! 💢"; 
@@ -142,7 +156,7 @@ canvas.addEventListener("pointerup", (e) => {
         }
     }
 
-    // Tálak ellenőrzése
+    // 2. Tálak ellenőrzése
     let clickedBowl = false;
     Object.values(bowls).forEach(bowl => {
         if (moveX >= bowl.x && moveX <= bowl.x + bowl.width && moveY >= bowl.y && moveY <= bowl.y + bowl.height) {
@@ -167,7 +181,7 @@ canvas.addEventListener("pointerup", (e) => {
 
     if (clickedBowl) return;
 
-    // Üres udvarra bökés -> Odaszalad, ugat kettőt, majd 2mp múlva hazatér
+    // 3. Üres udvarra bökés -> Odaszalad, ugat kettőt
     if (dog.isBusy) return;
     
     let targetX = moveX - dog.width / 2;
