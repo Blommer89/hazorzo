@@ -57,9 +57,8 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Egységesített kattintás/érintés kezelés (mobilon a click esemény is tökéletesen lekezeli a koppintást)
 canvas.addEventListener("click", (e) => {
-    if (dog.isBusy) return; // Ha épp mozog vagy eszik, ne zavarjuk be új parannyal
+    if (dog.isBusy) return;
 
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -67,7 +66,7 @@ canvas.addEventListener("click", (e) => {
     const clickX = (e.clientX - rect.left) * scaleX;
     const clickY = (e.clientY - rect.top) * scaleY;
 
-    // 1. Kutyus ellenőrzése (Simizés / Megsértődés)
+    // 1. Kutyus ellenőrzése
     if (clickX >= dog.x && clickX <= dog.x + dog.width && clickY >= dog.y && clickY <= dog.y + dog.height) {
         dog.isBusy = true;
         dog.state = "Megsértődött! 💢"; 
@@ -137,7 +136,7 @@ function moveDogTo(targetX, targetY, stateText, img, onComplete) {
             dog.currentImage = dogImages.idle;
             dog.x = dog.startX;
             dog.y = dog.startY;
-            dog.isBusy = false; // Újra szabad a kutya
+            dog.isBusy = false;
         }
     };
 
