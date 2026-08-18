@@ -42,12 +42,81 @@ let dog = {
     isBusy: false,
     isDead: false,
     
-    // Statisztikák (0 - 100)
+    // Alapértelmezett statisztikák
     health: 100,
     hunger: 10,   
     thirst: 10,   
     bladder: 10   
 };
+
+// Játékállapot betöltése a localStorage-ból (ha létezik korábbi adat)
+function loadGameData() {
+    const savedData = localStorage.getItem("tamagotchi_dog");
+    const savedTime = localStorage.getItem("tamagotchi_last_save");
+
+    if (savedData) {
+        try {
+            const parsed = JSON.parse(savedData);
+            dog.health = parsed.health;
+            dog.hunger = parsed.hunger;
+            dog.thirst = parsed.thirst;
+            dog.bladder = parsed.bladder;
+            dog.isDead = parsed.isDead;
+
+            // Ha volt mentett időpont, kiszámoljuk mennyi telt el kilépés óta
+            if (savedTime && !dog.isDead) {
+                const now = Date.now();
+                const elapsedSeconds = Math.floor((now - parseInt(savedTime, 10)) / 1000);
+
+                if (elapsedSeconds > 0) {
+                    // Értékek növelése az eltelt idő alapján (hasonlóan a stat loophoz)
+                    dog.hunger = Math.min(100, dog.hunger + elapsedSeconds * 0.3);
+                    dog.thirst = Math.min(100, dog.thirst + elapsedSeconds * 0.4);
+                    dog.bladder = Math.min(100, dog.bladder + elapsedSeconds * 0.2);
+
+                    // Egészség változása az eltelt idő alatt
+                    for (let i = 0; i < elapsedSeconds; i++) {
+                        if (dog.hunger > 85 || dog.thirst > 85 || dog.bladder > 90) {
+                            dog.health = Math.max(0, dog.health - 1.5);
+                        } else if (dog.hunger < 50 && dog.thirst < 50 && dog.bladder < 50) {
+                            dog.health = Math.min(100, dog.health + 0.5);
+                        }
+                    }
+
+                    if (dog.health <= 0) {
+                        dog.health = 0;
+                        dog.isDead = true;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Hiba a mentett adatok betöltésekor:", e);
+        }
+    }
+
+    // Kezdő kép beállítása az aktuális életkor / állapot alapján
+    if (dog.isDead) {
+        dog.currentImage = dogImages.dead.complete ? dogImages.dead : dogImages.angry;
+    } else {
+        dog.currentImage = getBaseIdleImage();
+    }
+}
+
+// Játékállapot mentése a localStorage-ba
+function saveGameData() {
+    const dataToSave = {
+        health: dog.health,
+        hunger: dog.hunger,
+        thirst: dog.thirst,
+        bladder: dog.bladder,
+        isDead: dog.isDead
+    };
+    localStorage.setItem("tamagotchi_dog", JSON.stringify(dataToSave));
+    localStorage.setItem("tamagotchi_last_save", Date.now().toString());
+}
+
+// Betöltés futtatása indításkor
+loadGameData();
 
 // Pillangó adatai
 let butterfly = {
@@ -56,7 +125,7 @@ let butterfly = {
     active: false
 };
 
-// Mókus adatai (alap pozícióval és ugrándozáshoz szükséges adatokkal)
+// Mókus adatai
 let squirrel = {
     x: 0, y: 0,
     baseX: 0, baseY: 0,
@@ -131,7 +200,7 @@ let returnTimeout = null;
 let longPressTimer = null;
 let butterflyTimeout = null;
 let squirrelTimeout = null;
-let squirrelMoveInterval = null; // Időzítő a mókus random mocorgásához
+let squirrelMoveInterval = null;
 
 function getBaseIdleImage() {
     if (dog.health < 100) {
@@ -174,6 +243,9 @@ function startStatsLoop() {
             
             dog.currentImage = dogImages.dead.complete ? dogImages.dead : dogImages.angry;
         }
+
+        // Automatikus mentés minden másodpercben
+        saveGameData();
     }, 1000);
 }
 
@@ -230,6 +302,7 @@ function resetGame() {
     if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
     if (returnTimeout) clearTimeout(returnTimeout);
     if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+    saveGameData();
 }
 
 // ==================================================================================
@@ -375,11 +448,13 @@ canvas.addEventListener("pointerdown", (e) => {
 
             dog.currentImage = dogImages.belly;
             dog.health = Math.min(100, dog.health + 5); 
+            saveGameData();
             
             returnTimeout = setTimeout(() => { 
                 if (dog.isDead) return;
                 dog.currentImage = getBaseIdleImage(); 
                 dog.isBusy = false; 
+                saveGameData();
             }, 2000);
         }, 400);
     }
@@ -457,6 +532,7 @@ canvas.addEventListener("pointerup", (e) => {
                 if (dog.isDead) return;
                 dog.currentImage = dogImages.pee;
                 dog.bladder = 0; 
+                saveGameData();
                 returnTimeout = setTimeout(() => { if (!dog.isDead) animateBackToStart(); }, 2500);
             });
         });
@@ -477,6 +553,7 @@ canvas.addEventListener("pointerup", (e) => {
                 if (dog.isDead) return;
                 dog.currentImage = dogImages.pee;
                 dog.bladder = 0; 
+                saveGameData();
                 returnTimeout = setTimeout(() => { if (!dog.isDead) animateBackToStart(); }, 2500);
             });
         });
@@ -513,6 +590,7 @@ canvas.addEventListener("pointerup", (e) => {
                     } else {
                         dog.thirst = Math.max(0, dog.thirst - 40);
                     }
+                    saveGameData();
                 });
             });
         }
@@ -527,44 +605,38 @@ canvas.addEventListener("pointerup", (e) => {
         if (squirrelTimeout) clearTimeout(squirrelTimeout);
         if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
 
-        // Kezdő / alap pozíció beállítása a bökés helyén
         squirrel.baseX = moveX - squirrel.width / 2;
         squirrel.baseY = moveY - squirrel.height / 2;
         squirrel.x = squirrel.baseX;
         squirrel.y = squirrel.baseY;
         squirrel.active = true;
 
-        // Mókus random mocorgása (előre-hátra, le-fel) az alaphelyzet körül
         squirrelMoveInterval = setInterval(() => {
             if (!squirrel.active || dog.isDead) return;
-            // Véletlenszerű elmozdulás -35 és +35 pixel között
             let randomOffsetX = (Math.random() - 0.5) * 70;
             let randomOffsetY = (Math.random() - 0.5) * 70;
             squirrel.x = squirrel.baseX + randomOffsetX;
             squirrel.y = squirrel.baseY + randomOffsetY;
-        }, 600); // 0.6 másodpercenként ugrik egyet egy másik irányba
+        }, 600);
 
-        // Hagyunk időt a mókusnak ugrándozni (pl. 3.5 másodperc múlva indul a kutya)
         squirrelTimeout = setTimeout(() => {
             if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
             if (!squirrel.active || dog.isDead) return;
 
-            // Kutya odarohan a mókus aktuális pozíciójához
             let targetX = squirrel.x - dog.width / 2 + 20;
             let targetY = squirrel.y - dog.height / 2 + 20;
 
             moveDogToCustom(targetX, targetY, () => {
                 if (dog.isDead) return;
-                dog.currentImage = dogImages.bark; // Megugatja
+                dog.currentImage = dogImages.bark; 
                 
-                // Utána eltűnik a mókus, és a kutya hazasétál
                 returnTimeout = setTimeout(() => {
                     if (dog.isDead) return;
                     squirrel.active = false;
                     animateBackToStart();
                 }, 2500);
             });
-        }, 3500); // 3.5 mp ugrándozási idő
+        }, 3500);
     });
 });
 
@@ -635,6 +707,7 @@ function animateBackToStart() {
             dog.x = dog.startX;
             dog.y = dog.startY;
             dog.isBusy = false; currentAnimationId = null;
+            saveGameData();
         }
     };
     stepBack();
