@@ -20,7 +20,7 @@ const dogImages = {
     idle: new Image(), angry: new Image(), belly: new Image(),
     walk: new Image(), eating: new Image(), drinking: new Image(),
     bark: new Image(), pee: new Image(), dead: new Image(),
-    sick: new Image() // Új beteg kép betöltése
+    sick: new Image()
 };
 dogImages.idle.src = "assets/dog_idle.png";
 dogImages.angry.src = "assets/dog_angry.png";
@@ -31,7 +31,7 @@ dogImages.drinking.src = "assets/dog_drinking.png";
 dogImages.bark.src = "assets/dog_bark.png";
 dogImages.pee.src = "assets/dog_pee.png";
 dogImages.dead.src = "assets/dog_dead.png";
-dogImages.sick.src = "assets/dog_sick.png"; // Beteg kép fájlútvonala
+dogImages.sick.src = "assets/dog_sick.png";
 
 // Kutya adatai
 let dog = { 
@@ -56,9 +56,10 @@ let butterfly = {
     active: false
 };
 
-// Mókus adatai
+// Mókus adatai (alap pozícióval és ugrándozáshoz szükséges adatokkal)
 let squirrel = {
     x: 0, y: 0,
+    baseX: 0, baseY: 0,
     width: 100, height: 100,
     active: false
 };
@@ -101,7 +102,7 @@ function requestFullscreenOnce() {
 }
 
 let imagesLoaded = 0;
-const totalImages = 19; // Eggyel több lett az új kép miatt
+const totalImages = 19;
 function checkLoad() {
     imagesLoaded++;
     if (imagesLoaded >= totalImages) {
@@ -130,8 +131,8 @@ let returnTimeout = null;
 let longPressTimer = null;
 let butterflyTimeout = null;
 let squirrelTimeout = null;
+let squirrelMoveInterval = null; // Időzítő a mókus random mocorgásához
 
-// Segédfüggvény az alapértelmezett arc kiválasztásához (ha éppen nincs elfoglalva más animációval)
 function getBaseIdleImage() {
     if (dog.health < 100) {
         return dogImages.sick.complete ? dogImages.sick : dogImages.idle;
@@ -167,6 +168,7 @@ function startStatsLoop() {
             squirrel.active = false;
             if (butterflyTimeout) clearTimeout(butterflyTimeout);
             if (squirrelTimeout) clearTimeout(squirrelTimeout);
+            if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
             if (returnTimeout) clearTimeout(returnTimeout);
             if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
             
@@ -225,6 +227,7 @@ function resetGame() {
     squirrel.active = false;
     if (butterflyTimeout) clearTimeout(butterflyTimeout);
     if (squirrelTimeout) clearTimeout(squirrelTimeout);
+    if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
     if (returnTimeout) clearTimeout(returnTimeout);
     if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
 }
@@ -365,6 +368,7 @@ canvas.addEventListener("pointerdown", (e) => {
             squirrel.active = false;
             if (butterflyTimeout) clearTimeout(butterflyTimeout);
             if (squirrelTimeout) clearTimeout(squirrelTimeout);
+            if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
             
             if (returnTimeout) clearTimeout(returnTimeout);
             if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
@@ -426,6 +430,7 @@ canvas.addEventListener("pointerup", (e) => {
         squirrel.active = false;
         if (butterflyTimeout) clearTimeout(butterflyTimeout);
         if (squirrelTimeout) clearTimeout(squirrelTimeout);
+        if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
         if (returnTimeout) clearTimeout(returnTimeout);
         if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
 
@@ -445,6 +450,7 @@ canvas.addEventListener("pointerup", (e) => {
             squirrel.active = false;
             if (butterflyTimeout) clearTimeout(butterflyTimeout);
             if (squirrelTimeout) clearTimeout(squirrelTimeout);
+            if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
             let targetX = treeLeft.x + (treeLeft.width / 2) - (dog.width / 2) - 60;
             let targetY = treeLeft.y + treeLeft.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
@@ -464,6 +470,7 @@ canvas.addEventListener("pointerup", (e) => {
             squirrel.active = false;
             if (butterflyTimeout) clearTimeout(butterflyTimeout);
             if (squirrelTimeout) clearTimeout(squirrelTimeout);
+            if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
             let targetX = treeRight.x + (treeRight.width / 2) - (dog.width / 2) - 60;
             let targetY = treeRight.y + treeRight.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
@@ -486,6 +493,7 @@ canvas.addEventListener("pointerup", (e) => {
                 squirrel.active = false;
                 if (butterflyTimeout) clearTimeout(butterflyTimeout);
                 if (squirrelTimeout) clearTimeout(squirrelTimeout);
+                if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
                 bowl.isFull = true; 
                 bowl.img = bowl.fullImg;
                 
@@ -512,29 +520,51 @@ canvas.addEventListener("pointerup", (e) => {
 
     if (clickedBowl) return;
     
-    // 5. Mókus megjelenítése a kertben bökésre
+    // 5. Mókus megjelenítése, véletlenszerű ugrándozás, majd a kutya odafut és elzavarja
     triggerDogAction(() => {
         butterfly.active = false;
         if (butterflyTimeout) clearTimeout(butterflyTimeout);
         if (squirrelTimeout) clearTimeout(squirrelTimeout);
+        if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
 
-        squirrel.x = moveX - squirrel.width / 2;
-        squirrel.y = moveY - squirrel.height / 2;
+        // Kezdő / alap pozíció beállítása a bökés helyén
+        squirrel.baseX = moveX - squirrel.width / 2;
+        squirrel.baseY = moveY - squirrel.height / 2;
+        squirrel.x = squirrel.baseX;
+        squirrel.y = squirrel.baseY;
         squirrel.active = true;
 
-        let targetX = squirrel.x - dog.width / 2 + 20;
-        let targetY = squirrel.y - dog.height / 2 + 20;
+        // Mókus random mocorgása (előre-hátra, le-fel) az alaphelyzet körül
+        squirrelMoveInterval = setInterval(() => {
+            if (!squirrel.active || dog.isDead) return;
+            // Véletlenszerű elmozdulás -35 és +35 pixel között
+            let randomOffsetX = (Math.random() - 0.5) * 70;
+            let randomOffsetY = (Math.random() - 0.5) * 70;
+            squirrel.x = squirrel.baseX + randomOffsetX;
+            squirrel.y = squirrel.baseY + randomOffsetY;
+        }, 600); // 0.6 másodpercenként ugrik egyet egy másik irányba
 
-        moveDogToCustom(targetX, targetY, () => {
-            if (dog.isDead) return;
-            dog.currentImage = dogImages.bark; 
-            
-            returnTimeout = setTimeout(() => {
+        // Hagyunk időt a mókusnak ugrándozni (pl. 3.5 másodperc múlva indul a kutya)
+        squirrelTimeout = setTimeout(() => {
+            if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
+            if (!squirrel.active || dog.isDead) return;
+
+            // Kutya odarohan a mókus aktuális pozíciójához
+            let targetX = squirrel.x - dog.width / 2 + 20;
+            let targetY = squirrel.y - dog.height / 2 + 20;
+
+            moveDogToCustom(targetX, targetY, () => {
                 if (dog.isDead) return;
-                squirrel.active = false; 
-                animateBackToStart();
-            }, 2500);
-        });
+                dog.currentImage = dogImages.bark; // Megugatja
+                
+                // Utána eltűnik a mókus, és a kutya hazasétál
+                returnTimeout = setTimeout(() => {
+                    if (dog.isDead) return;
+                    squirrel.active = false;
+                    animateBackToStart();
+                }, 2500);
+            });
+        }, 3500); // 3.5 mp ugrándozási idő
     });
 });
 
@@ -601,7 +631,7 @@ function animateBackToStart() {
             dog.currentImage = dogImages.walk;
             currentAnimationId = requestAnimationFrame(stepBack);
         } else {
-            dog.currentImage = getBaseIdleImage(); // Visszaáll az életerő függvényében (beteg vagy normál idle)
+            dog.currentImage = getBaseIdleImage();
             dog.x = dog.startX;
             dog.y = dog.startY;
             dog.isBusy = false; currentAnimationId = null;
