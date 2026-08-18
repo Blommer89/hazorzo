@@ -74,7 +74,7 @@ function startGame() {
         gameStarted = true;
         gameLoop();
         startStatsLoop(); 
-        startButterflyLoop(); // Pillangó időzítő indítása
+        startButterflyLoop(); 
     }
 }
 
@@ -145,45 +145,48 @@ function startStatsLoop() {
             dog.isDead = true;
             butterfly.active = false; 
             if (butterflyTimeout) clearTimeout(butterflyTimeout);
+            if (returnTimeout) clearTimeout(returnTimeout);
+            if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+            
+            // Biztosítjuk, hogy a halott kép maradjon és ne bírja semmi felülírni
             dog.currentImage = dogImages.dead.complete ? dogImages.dead : dogImages.angry;
         }
     }, 1000);
 }
 
 // ==================================================================================
-// PILLANGÓ LOGIKA (Sűrűbb megjelenés + időhagyás az észrevételhez)
+// PILLANGÓ LOGIKA
 // ==================================================================================
 function startButterflyLoop() {
     setInterval(() => {
         if (dog.isDead || dog.isBusy || butterfly.active) return;
 
-        // 45% esély, hogy sűrűbben jöjjön
         if (Math.random() < 0.45) {
             butterfly.x = Math.random() * (canvas.width - 300) + 150;
             butterfly.y = Math.random() * 800 + 1200;
             butterfly.active = true;
 
-            // Hagyunk 1.5 másodpercet, hogy a pillangó ott legyen a képernyőn, és a játékos/kutya észrevegye
             if (butterflyTimeout) clearTimeout(butterflyTimeout);
             butterflyTimeout = setTimeout(() => {
                 if (!butterfly.active || dog.isDead || dog.isBusy) return;
 
-                // A kutya elindul a pillangóhoz
                 triggerDogAction(() => {
                     let targetX = butterfly.x - dog.width / 2 + 20;
                     let targetY = butterfly.y - dog.height / 2 + 20;
 
                     moveDogToCustom(targetX, targetY, () => {
+                        if (dog.isDead) return;
                         dog.currentImage = dogImages.bark;
                         returnTimeout = setTimeout(() => {
+                            if (dog.isDead) return;
                             butterfly.active = false;
                             animateBackToStart();
                         }, 2500);
                     });
                 });
-            }, 1500); // 1.5 mp gondolkodási/észlelési idő
+            }, 1500); 
         }
-    }, 7000); // 7 másodpercenként próbálkozik
+    }, 7000); 
 }
 
 // Játék újraindítása
@@ -199,6 +202,8 @@ function resetGame() {
     dog.isBusy = false;
     butterfly.active = false;
     if (butterflyTimeout) clearTimeout(butterflyTimeout);
+    if (returnTimeout) clearTimeout(returnTimeout);
+    if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
 }
 
 // ==================================================================================
@@ -215,12 +220,14 @@ function gameLoop() {
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     
-    // Pillangó kirajzolása, ha aktív
     if (butterfly.active && !dog.isDead) {
         ctx.drawImage(butterflyImg, butterfly.x, butterfly.y, butterfly.width, butterfly.height);
     }
 
-    if (!dog.isDead) {
+    // Ha meghalt, a halott képet rajzoljuk fixen a saját pozíciójára (vagy ahová utoljára esett)
+    if (dog.isDead) {
+        ctx.drawImage(dogImages.dead.complete ? dogImages.dead : dogImages.angry, dog.x, dog.y, dog.width, dog.height);
+    } else {
         ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
     }
 
@@ -233,7 +240,8 @@ function drawHUD() {
         ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
+        // Újra kirajzoljuk a halott kutyát a sötétítő réteg tetejére is középre, hogy jól látszódjon
+        ctx.drawImage(dogImages.dead.complete ? dogImages.dead : dogImages.angry, canvas.width / 2 - 125, canvas.height / 2 - 320, 250, 250);
         
         ctx.fillStyle = "#e74c3c";
         ctx.font = "bold 70px Arial";
@@ -313,7 +321,7 @@ canvas.addEventListener("pointerdown", (e) => {
             startY >= resetButton.y && startY <= resetButton.y + resetButton.height) {
             resetGame();
         }
-        return;
+        return; // Halott állapotban semmi másra nem reagál
     }
 
     if (e.cancelable) e.preventDefault();
@@ -326,6 +334,7 @@ canvas.addEventListener("pointerdown", (e) => {
         
         longPressTimer = setTimeout(() => {
             longPressTimer = null;
+            if (dog.isDead) return;
             dog.isBusy = true;
             butterfly.active = false; 
             if (butterflyTimeout) clearTimeout(butterflyTimeout);
@@ -337,6 +346,7 @@ canvas.addEventListener("pointerdown", (e) => {
             dog.health = Math.min(100, dog.health + 5); 
             
             returnTimeout = setTimeout(() => { 
+                if (dog.isDead) return;
                 dog.currentImage = dogImages.idle; 
                 dog.isBusy = false; 
             }, 2000);
@@ -345,7 +355,7 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 
 canvas.addEventListener("pointerup", (e) => {
-    if (dog.isDead) return;
+    if (dog.isDead) return; // Halott állapotban tiltva
 
     if (longPressTimer) {
         clearTimeout(longPressTimer);
@@ -357,7 +367,6 @@ canvas.addEventListener("pointerup", (e) => {
     const moveY = coords.y;
     const padding = 60;
 
-    // Ha rákattintasz a pillangóra, azonnal odafut
     if (butterfly.active && moveX >= butterfly.x - 40 && moveX <= butterfly.x + butterfly.width + 40 &&
         moveY >= butterfly.y - 40 && moveY <= butterfly.y + butterfly.height + 40) {
         
@@ -367,8 +376,10 @@ canvas.addEventListener("pointerup", (e) => {
             let targetY = butterfly.y - dog.height / 2 + 20;
 
             moveDogToCustom(targetX, targetY, () => {
+                if (dog.isDead) return;
                 dog.currentImage = dogImages.bark;
                 returnTimeout = setTimeout(() => {
+                    if (dog.isDead) return;
                     butterfly.active = false;
                     animateBackToStart();
                 }, 2500);
@@ -389,7 +400,11 @@ canvas.addEventListener("pointerup", (e) => {
         if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
 
         dog.currentImage = dogImages.angry;
-        returnTimeout = setTimeout(() => { dog.currentImage = dogImages.idle; dog.isBusy = false; }, 1500);
+        returnTimeout = setTimeout(() => { 
+            if (dog.isDead) return;
+            dog.currentImage = dogImages.idle; 
+            dog.isBusy = false; 
+        }, 1500);
         return;
     }
 
@@ -401,9 +416,10 @@ canvas.addEventListener("pointerup", (e) => {
             let targetX = treeLeft.x + (treeLeft.width / 2) - (dog.width / 2) - 60;
             let targetY = treeLeft.y + treeLeft.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
+                if (dog.isDead) return;
                 dog.currentImage = dogImages.pee;
                 dog.bladder = 0; 
-                returnTimeout = setTimeout(() => { animateBackToStart(); }, 2500);
+                returnTimeout = setTimeout(() => { if (!dog.isDead) animateBackToStart(); }, 2500);
             });
         });
         return;
@@ -417,9 +433,10 @@ canvas.addEventListener("pointerup", (e) => {
             let targetX = treeRight.x + (treeRight.width / 2) - (dog.width / 2) - 60;
             let targetY = treeRight.y + treeRight.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
+                if (dog.isDead) return;
                 dog.currentImage = dogImages.pee;
                 dog.bladder = 0; 
-                returnTimeout = setTimeout(() => { animateBackToStart(); }, 2500);
+                returnTimeout = setTimeout(() => { if (!dog.isDead) animateBackToStart(); }, 2500);
             });
         });
         return;
@@ -443,6 +460,7 @@ canvas.addEventListener("pointerup", (e) => {
                 let targetY = bowl.y - 120; 
 
                 moveDogToExplicit(targetX, targetY, imgAsset, () => { 
+                    if (dog.isDead) return;
                     bowl.isFull = false; 
                     bowl.img = bowl.emptyImg;
                     
@@ -465,13 +483,15 @@ canvas.addEventListener("pointerup", (e) => {
         let targetX = moveX - dog.width / 2;
         let targetY = moveY - dog.height / 2;
         moveDogToCustom(targetX, targetY, () => {
+            if (dog.isDead) return;
             dog.currentImage = dogImages.bark;
-            returnTimeout = setTimeout(() => { animateBackToStart(); }, 2000);
+            returnTimeout = setTimeout(() => { if (!dog.isDead) animateBackToStart(); }, 2000);
         });
     });
 });
 
 function triggerDogAction(actionCallback) {
+    if (dog.isDead) return;
     if (returnTimeout) { clearTimeout(returnTimeout); returnTimeout = null; }
     if (currentAnimationId) { cancelAnimationFrame(currentAnimationId); currentAnimationId = null; }
     dog.isBusy = false;
@@ -483,8 +503,10 @@ function triggerDogAction(actionCallback) {
 // ==================================================================================
 
 function moveDogToExplicit(targetX, targetY, img, onComplete) {
+    if (dog.isDead) return;
     dog.isBusy = true;
     const animateToBowl = () => {
+        if (dog.isDead) return;
         let dx = targetX - dog.x; let dy = targetY - dog.y;
         if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
             dog.x += dx * 0.15; dog.y += dy * 0.15;
@@ -492,15 +514,21 @@ function moveDogToExplicit(targetX, targetY, img, onComplete) {
             currentAnimationId = requestAnimationFrame(animateToBowl);
         } else {
             dog.x = targetX; dog.y = targetY; dog.currentImage = img;
-            returnTimeout = setTimeout(() => { animateBackToStart(); if (onComplete) onComplete(); }, 2000);
+            returnTimeout = setTimeout(() => { 
+                if (dog.isDead) return;
+                animateBackToStart(); 
+                if (onComplete) onComplete(); 
+            }, 2000);
         }
     };
     animateToBowl();
 }
 
 function moveDogToCustom(targetX, targetY, onComplete) {
+    if (dog.isDead) return;
     dog.isBusy = true;
     const animateCustom = () => {
+        if (dog.isDead) return;
         let dx = targetX - dog.x; let dy = targetY - dog.y;
         if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
             dog.x += dx * 0.15; dog.y += dy * 0.15;
@@ -515,8 +543,10 @@ function moveDogToCustom(targetX, targetY, onComplete) {
 }
 
 function animateBackToStart() {
+    if (dog.isDead) return;
     dog.isBusy = true;
     const stepBack = () => {
+        if (dog.isDead) return;
         let dx = dog.startX - dog.x; let dy = dog.startY - dog.y;
         if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
             dog.x += dx * 0.15; dog.y += dy * 0.15;
