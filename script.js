@@ -49,8 +49,8 @@ const doghouse = { x: 600, y: 950, width: 300, height: 300 };
 
 // 3. Tálak (pontosan az általad megadott fix koordinátákkal és a kutyaházhoz igazítva)
 const bowls = {
-    water: { x: 640, y: 1350, width: 90, height: 90, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
-    food: { x: 800, y: 1400, width: 90, height: 90, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
+    water: { x: 590, y: 1300, width: 90, height: 90, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    food: { x: 750, y: 1350, width: 90, height: 90, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
 let gameStarted = false;
