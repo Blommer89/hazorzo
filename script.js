@@ -57,12 +57,27 @@ const bowls = {
     food: { x: 750, y: 1350, width: 90, height: 90, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
+// Újrakezdés gomb pozíciója a halálképernyőn
+const resetButton = { x: 340, y: 1550, width: 400, height: 90 };
+
 let gameStarted = false;
 function startGame() {
     if (!gameStarted) {
         gameStarted = true;
         gameLoop();
         startStatsLoop(); 
+    }
+}
+
+// Teljes képernyős kérés az első interakciónál
+function requestFullscreenOnce() {
+    let elem = document.documentElement;
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(() => {});
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        }
     }
 }
 
@@ -122,6 +137,19 @@ function startStatsLoop() {
     }, 1000);
 }
 
+// Játék újraindítása
+function resetGame() {
+    dog.health = 100;
+    dog.hunger = 10;
+    dog.thirst = 10;
+    dog.bladder = 10;
+    dog.isDead = false;
+    dog.x = dog.startX;
+    dog.y = dog.startY;
+    dog.currentImage = dogImages.idle;
+    dog.isBusy = false;
+}
+
 // ==================================================================================
 // FŐ JÁTÉKCIKLUS
 // ==================================================================================
@@ -136,7 +164,6 @@ function gameLoop() {
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     
-    // Ha halott, a drawHUD rajzolja ki a sötétítés elé, különben normálisan rajzoljuk a kutyát
     if (!dog.isDead) {
         ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
     }
@@ -146,13 +173,12 @@ function gameLoop() {
 }
 
 function drawHUD() {
-    // 1. Ha a kutya meghalt
     if (dog.isDead) {
-        // Először lehomályosítjuk a hátteret
+        // Sötétített háttér
         ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // MAJD rárajzoljuk a halott kutyust a sötétítés FELETT, hogy teljesen tisztán látszódjon!
+        // Halott kutyus a sötétítés felett
         ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
         
         // Game Over feliratok
@@ -164,11 +190,24 @@ function drawHUD() {
         ctx.fillStyle = "#ffffff";
         ctx.font = "35px Arial";
         ctx.fillText("Nem gondoskodtál róla időben...", canvas.width / 2, canvas.height / 2 - 50);
+
+        // Visszafogott, elegáns Újrakezdés gomb rajzolása
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        ctx.fillRect(resetButton.x, resetButton.y, resetButton.width, resetButton.height);
+        
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(resetButton.x, resetButton.y, resetButton.width, resetButton.height);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.font = "28px Arial";
+        ctx.fillText("Újrakezdés", canvas.width / 2, resetButton.y + resetButton.height / 2 + 10);
+
         ctx.textAlign = "left";
         return; 
     }
 
-    // 2. Normál HUD (élő kutyánál)
+    // Normál HUD (élő kutyánál)
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
     ctx.fillRect(50, 50, 980, 140);
     ctx.strokeStyle = "#ffffff";
@@ -212,12 +251,22 @@ function getCanvasCoords(e) {
 // ==================================================================================
 
 canvas.addEventListener("pointerdown", (e) => {
-    if (dog.isDead) return;
-    if (e.cancelable) e.preventDefault();
-    
+    requestFullscreenOnce(); // Teljes képernyő aktiválása az első érintésre
+
     const coords = getCanvasCoords(e);
     const startX = coords.x;
     const startY = coords.y;
+
+    // Ha halott a kutya, vizsgáljuk, hogy az Újrakezdés gombra nyomott-e
+    if (dog.isDead) {
+        if (startX >= resetButton.x && startX <= resetButton.x + resetButton.width &&
+            startY >= resetButton.y && startY <= resetButton.y + resetButton.height) {
+            resetGame();
+        }
+        return;
+    }
+
+    if (e.cancelable) e.preventDefault();
 
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
 
