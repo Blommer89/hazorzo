@@ -9,9 +9,10 @@ const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
 const treeImg = new Image(); treeImg.src = "assets/tree.png";
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
-const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
+const bowlWaterEmptyImg = new Image(); bowlWaterImg.src = "assets/tál_víz_üres.png";
 const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
 const bowlFoodEmptyImg = new Image(); bowlFoodEmptyImg.src = "assets/tál_kaja_üres.png";
+const butterflyImg = new Image(); butterflyImg.src = "assets/butterfly.png"; // Pillangó kép
 
 // Kutya állapotok képeinek betöltése
 const dogImages = {
@@ -45,6 +46,13 @@ let dog = {
     bladder: 10   
 };
 
+// Pillangó adatai
+let butterfly = {
+    x: 0, y: 0,
+    width: 100, height: 100,
+    active: false
+};
+
 // ==================================================================================
 // KÖRNYEZETI ELEMEK POZÍCIONÁLÁSA
 // ==================================================================================
@@ -66,6 +74,7 @@ function startGame() {
         gameStarted = true;
         gameLoop();
         startStatsLoop(); 
+        startButterflyLoop(); // Pillangó időzítő indítása
     }
 }
 
@@ -82,7 +91,7 @@ function requestFullscreenOnce() {
 }
 
 let imagesLoaded = 0;
-const totalImages = 16;
+const totalImages = 17; // 16 alap kép + 1 pillangó
 function checkLoad() {
     imagesLoaded++;
     if (imagesLoaded >= totalImages) {
@@ -93,6 +102,7 @@ function checkLoad() {
 yardImg.onload = checkLoad; yardImg.onerror = checkLoad;
 doghouseImg.onload = checkLoad; doghouseImg.onerror = checkLoad;
 treeImg.onload = checkLoad; treeImg.onerror = checkLoad;
+butterflyImg.onload = checkLoad; butterflyImg.onerror = checkLoad;
 [bowlWaterImg, bowlWaterEmptyImg, bowlFoodImg, bowlFoodEmptyImg].forEach(img => {
     img.onload = checkLoad;
     img.onerror = checkLoad;
@@ -132,9 +142,45 @@ function startStatsLoop() {
         if (dog.health <= 0) {
             dog.health = 0;
             dog.isDead = true;
+            butterfly.active = false; // Ha meghal, a pillangó eltűnik
             dog.currentImage = dogImages.dead.complete ? dogImages.dead : dogImages.angry;
         }
     }, 1000);
+}
+
+// ==================================================================================
+// PILLANGÓ LOGIKA (Random megjelenés, ha a kutya nem csinál semmit)
+// ==================================================================================
+function startButterflyLoop() {
+    setInterval(() => {
+        // Csak akkor jön be, ha él a kutya, és éppen teljesen szabad (nem elfoglalt)
+        if (dog.isDead || dog.isBusy || butterfly.active) return;
+
+        // 35% esély minden ciklusban, hogy megjelenik a pillangó
+        if (Math.random() < 0.35) {
+            // Random pozíció a játéktér alsóbb/középső részén, ahol a kutya is van
+            butterfly.x = Math.random() * (canvas.width - 300) + 150;
+            butterfly.y = Math.random() * 800 + 1200;
+            butterfly.active = true;
+
+            // A kutya odafut a pillangóhoz
+            triggerDogAction(() => {
+                let targetX = butterfly.x - dog.width / 2 + 20;
+                let targetY = butterfly.y - dog.height / 2 + 20;
+
+                moveDogToCustom(targetX, targetY, () => {
+                    // Megérkezett, megugatja a pillangót
+                    dog.currentImage = dogImages.bark;
+                    
+                    // Pár másodperc múlva eltűnik a pillangó és a kutya visszatér
+                    returnTimeout = setTimeout(() => {
+                        butterfly.active = false;
+                        animateBackToStart();
+                    }, 2500);
+                });
+            });
+        }
+    }, 15000); // 15 másodpercenként próbálkozik
 }
 
 // Játék újraindítása
@@ -148,6 +194,7 @@ function resetGame() {
     dog.y = dog.startY;
     dog.currentImage = dogImages.idle;
     dog.isBusy = false;
+    butterfly.active = false;
 }
 
 // ==================================================================================
@@ -164,6 +211,11 @@ function gameLoop() {
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     
+    // Pillangó kirajzolása, ha aktív
+    if (butterfly.active && !dog.isDead) {
+        ctx.drawImage(butterflyImg, butterfly.x, butterfly.y, butterfly.width, butterfly.height);
+    }
+
     if (!dog.isDead) {
         ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
     }
@@ -174,14 +226,11 @@ function gameLoop() {
 
 function drawHUD() {
     if (dog.isDead) {
-        // Sötétített háttér
         ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Halott kutyus a sötétítés felett
         ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
         
-        // Game Over feliratok
         ctx.fillStyle = "#e74c3c";
         ctx.font = "bold 70px Arial";
         ctx.textAlign = "center";
@@ -191,7 +240,6 @@ function drawHUD() {
         ctx.font = "35px Arial";
         ctx.fillText("Nem gondoskodtál róla időben...", canvas.width / 2, canvas.height / 2 - 50);
 
-        // Visszafogott, elegáns Újrakezdés gomb rajzolása
         ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(resetButton.x, resetButton.y, resetButton.width, resetButton.height);
         
@@ -207,7 +255,6 @@ function drawHUD() {
         return; 
     }
 
-    // Normál HUD (élő kutyánál)
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
     ctx.fillRect(50, 50, 980, 140);
     ctx.strokeStyle = "#ffffff";
@@ -251,13 +298,12 @@ function getCanvasCoords(e) {
 // ==================================================================================
 
 canvas.addEventListener("pointerdown", (e) => {
-    requestFullscreenOnce(); // Teljes képernyő aktiválása az első érintésre
+    requestFullscreenOnce(); 
 
     const coords = getCanvasCoords(e);
     const startX = coords.x;
     const startY = coords.y;
 
-    // Ha halott a kutya, vizsgáljuk, hogy az Újrakezdés gombra nyomott-e
     if (dog.isDead) {
         if (startX >= resetButton.x && startX <= resetButton.x + resetButton.width &&
             startY >= resetButton.y && startY <= resetButton.y + resetButton.height) {
@@ -277,6 +323,7 @@ canvas.addEventListener("pointerdown", (e) => {
         longPressTimer = setTimeout(() => {
             longPressTimer = null;
             dog.isBusy = true;
+            butterfly.active = false; // Ha a játékos simizi, elkergetik a pillangót
             
             if (returnTimeout) clearTimeout(returnTimeout);
             if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
@@ -305,12 +352,32 @@ canvas.addEventListener("pointerup", (e) => {
     const moveY = coords.y;
     const padding = 60;
 
+    // Ha megjelent a pillangó, és ráklikkelsz közvetlenül a pillangóra, a kutya odafut és megugatja!
+    if (butterfly.active && moveX >= butterfly.x - 40 && moveX <= butterfly.x + butterfly.width + 40 &&
+        moveY >= butterfly.y - 40 && moveY <= butterfly.y + butterfly.height + 40) {
+        
+        triggerDogAction(() => {
+            let targetX = butterfly.x - dog.width / 2 + 20;
+            let targetY = butterfly.y - dog.height / 2 + 20;
+
+            moveDogToCustom(targetX, targetY, () => {
+                dog.currentImage = dogImages.bark;
+                returnTimeout = setTimeout(() => {
+                    butterfly.active = false;
+                    animateBackToStart();
+                }, 2500);
+            });
+        });
+        return;
+    }
+
     // 1. Kutyára bökés
     if (moveX >= dog.x - padding && moveX <= dog.x + dog.width + padding && 
         moveY >= dog.y - padding && moveY <= dog.y + dog.height + padding) {
         
         if (dog.isBusy) return;
         dog.isBusy = true;
+        butterfly.active = false;
         if (returnTimeout) clearTimeout(returnTimeout);
         if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
 
@@ -322,6 +389,7 @@ canvas.addEventListener("pointerup", (e) => {
     // 2. BAL FA (Pisilés)
     if (moveX >= treeLeft.x && moveX <= treeLeft.x + treeLeft.width && moveY >= treeLeft.y && moveY <= treeLeft.y + treeLeft.height) {
         triggerDogAction(() => {
+            butterfly.active = false;
             let targetX = treeLeft.x + (treeLeft.width / 2) - (dog.width / 2) - 60;
             let targetY = treeLeft.y + treeLeft.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
@@ -336,6 +404,7 @@ canvas.addEventListener("pointerup", (e) => {
     // 3. JOBB FA (Pisilés)
     if (moveX >= treeRight.x && moveX <= treeRight.x + treeRight.width && moveY >= treeRight.y && moveY <= treeRight.y + treeRight.height) {
         triggerDogAction(() => {
+            butterfly.active = false;
             let targetX = treeRight.x + (treeRight.width / 2) - (dog.width / 2) - 60;
             let targetY = treeRight.y + treeRight.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
@@ -353,6 +422,7 @@ canvas.addEventListener("pointerup", (e) => {
         if (moveX >= bowl.x && moveX <= bowl.x + bowl.width && moveY >= bowl.y && moveY <= bowl.y + bowl.height) {
             clickedBowl = true;
             triggerDogAction(() => {
+                butterfly.active = false;
                 bowl.isFull = true; 
                 bowl.img = bowl.fullImg;
                 
@@ -380,6 +450,7 @@ canvas.addEventListener("pointerup", (e) => {
     
     // 5. Bárhova máshova -> Ugatás
     triggerDogAction(() => {
+        butterfly.active = false;
         let targetX = moveX - dog.width / 2;
         let targetY = moveY - dog.height / 2;
         moveDogToCustom(targetX, targetY, () => {
