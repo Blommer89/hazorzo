@@ -45,12 +45,12 @@ const treeLeft = { x: 80, y: 200, width: 320, height: 420 };
 const treeRight = { x: 680, y: 350, width: 320, height: 420 };
 
 // 2. Kutyaház (kicsit jobbra tolva, y pozíciója a képernyő felső-közép részén)
-const doghouse = { x: 550, y: 950, width: 350, height: 350 };
+const doghouse = { x: 600, y: 950, width: 350, height: 350 };
 
 // 3. Tálak (pontosan az általad megadott fix koordinátákkal és a kutyaházhoz igazítva)
 const bowls = {
-    water: { x: 640, y: 650, width: 130, height: 130, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
-    food: { x: 800, y: 700, width: 130, height: 130, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
+    water: { x: 640, y: 1000, width: 130, height: 130, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    food: { x: 800, y: 1050, width: 130, height: 130, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
 let gameStarted = false;
