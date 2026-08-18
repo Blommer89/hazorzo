@@ -37,6 +37,13 @@ let dog = {
 const tree = { x: 80, y: 250, width: 350, height: 450 };
 const doghouse = { x: 650, y: 300, width: 350, height: 350 };
 
+// ==================================================================================
+// 1. TÁLAK POZÍCIÓJÁNAK ÉS MÉRETÉNEK KALIBRÁLÁSA
+// ==================================================================================
+// Itt tudod állítani a vizes és a kajás tál helyét:
+// - x: vízszintes pozíció
+// - y: függőleges pozíció
+// - width / height: a tál mérete
 const bowls = {
     water: { x: 680, y: 700, width: 130, height: 130, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
     food: { x: 840, y: 700, width: 130, height: 130, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
@@ -71,7 +78,6 @@ Object.values(dogImages).forEach(img => {
     img.onerror = checkLoad;
 });
 
-// Biztonsági indítás, ha valamiért beragadna a betöltés
 setTimeout(startGame, 1500);
 
 let currentAnimationId = null;
@@ -83,15 +89,12 @@ let touchedOnDog = false;
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(treeImg, tree.x, tree.y, tree.width, tree.height);
     ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
-    
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
-    
     requestAnimationFrame(gameLoop);
 }
 
@@ -101,10 +104,7 @@ function getCanvasCoords(e) {
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
-    };
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
 }
 
 canvas.addEventListener("pointerdown", (e) => {
@@ -112,27 +112,17 @@ canvas.addEventListener("pointerdown", (e) => {
     touchStartX = coords.x;
     touchStartY = coords.y;
     maxDistance = 0;
-
     const padding = 40;
-    if (
-        touchStartX >= dog.x - padding && 
-        touchStartX <= dog.x + dog.width + padding && 
-        touchStartY >= dog.y - padding && 
-        touchStartY <= dog.y + dog.height + padding
-    ) {
+    if (touchStartX >= dog.x - padding && touchStartX <= dog.x + dog.width + padding && touchStartY >= dog.y - padding && touchStartY <= dog.y + dog.height + padding) {
         touchedOnDog = true;
-    } else {
-        touchedOnDog = false;
-    }
+    } else { touchedOnDog = false; }
 });
 
 canvas.addEventListener("pointermove", (e) => {
     if (!touchedOnDog) return;
     const coords = getCanvasCoords(e);
     const currentDistance = Math.hypot(coords.x - touchStartX, coords.y - touchStartY);
-    if (currentDistance > maxDistance) {
-        maxDistance = currentDistance;
-    }
+    if (currentDistance > maxDistance) maxDistance = currentDistance;
 });
 
 canvas.addEventListener("pointerup", (e) => {
@@ -140,51 +130,39 @@ canvas.addEventListener("pointerup", (e) => {
     const moveX = coords.x;
     const moveY = coords.y;
 
-    if (returnTimeout) {
-        clearTimeout(returnTimeout);
-        returnTimeout = null;
-    }
-    if (currentAnimationId) {
-        cancelAnimationFrame(currentAnimationId);
-        currentAnimationId = null;
-    }
+    if (returnTimeout) { clearTimeout(returnTimeout); returnTimeout = null; }
+    if (currentAnimationId) { cancelAnimationFrame(currentAnimationId); currentAnimationId = null; }
 
     if (touchedOnDog) {
         touchedOnDog = false;
         if (dog.isBusy) return;
-
         if (maxDistance > 15) {
             dog.isBusy = true;
             dog.currentImage = dogImages.belly;
-            setTimeout(() => { 
-                dog.currentImage = dogImages.idle; 
-                dog.isBusy = false;
-            }, 2000);
+            setTimeout(() => { dog.currentImage = dogImages.idle; dog.isBusy = false; }, 2000);
         } else {
             dog.isBusy = true;
             dog.currentImage = dogImages.angry;
-            setTimeout(() => { 
-                dog.currentImage = dogImages.idle; 
-                dog.isBusy = false;
-            }, 1500);
+            setTimeout(() => { dog.currentImage = dogImages.idle; dog.isBusy = false; }, 1500);
         }
         return;
     }
 
-    if (
-        moveX >= tree.x && moveX <= tree.x + tree.width && 
-        moveY >= tree.y && moveY <= tree.y + tree.height
-    ) {
+    // ==================================================================================
+    // 2. KUTYA POZÍCIÓJA A FÁHOZ KÉPEST (Pisi közben)
+    // ==================================================================================
+    if (moveX >= tree.x && moveX <= tree.x + tree.width && moveY >= tree.y && moveY <= tree.y + tree.height) {
         if (dog.isBusy) return;
         
-        let targetX = tree.x + (tree.width / 2) - (dog.width / 2) + 40;
-        let targetY = tree.y + tree.height - 230;
+        // ITT TUDOD ÁLLÍTANI:
+        // - targetX (+40): Vízszintes igazítás (nagyobb szám = jobbra, kisebb = balra)
+        // - targetY (-230): Függőleges igazítás (nagyobb szám = lejjebb, kisebb = feljebb)
+        let targetX = tree.x + (tree.width / 2) - (dog.width / 2) - 60;
+        let targetY = tree.y + tree.height - 230; 
 
         moveDogToCustom(targetX, targetY, () => {
             dog.currentImage = dogImages.pee;
-            returnTimeout = setTimeout(() => {
-                animateBackToStart();
-            }, 2500);
+            returnTimeout = setTimeout(() => { animateBackToStart(); }, 2500);
         });
         return;
     }
@@ -195,59 +173,55 @@ canvas.addEventListener("pointerup", (e) => {
             clickedBowl = true;
             if (dog.isBusy) return;
             
-            if (!bowl.isFull) {
-                bowl.isFull = true; 
-                bowl.img = bowl.fullImg;
-            } else {
-                dog.isBusy = true;
-                const imgAsset = (bowl === bowls.food) ? dogImages.eating : dogImages.drinking;
-                
-                let targetX = bowl.x + (bowl.width / 2) - (dog.width / 2);
-                let targetY = bowl.y - 120;
+            // Egy nyomásos logika: Megtölti a tálat és azonnal indul a kutya
+            bowl.isFull = true; 
+            bowl.img = bowl.fullImg;
+            
+            dog.isBusy = true;
+            const imgAsset = (bowl === bowls.food) ? dogImages.eating : dogImages.drinking;
+            
+            // ==================================================================================
+            // 3. KUTYA POZÍCIÓJA A TÁLAKHOZ KÉPEST (Evés / Ivás közben)
+            // ==================================================================================
+            // ITT TUDOD ÁLLÍTANI:
+            // - targetX (+0): Vízszintes igazítás a tálhoz képest (plusz szám = jobbra, mínusz = balra)
+            // - targetY (-120): Függőleges igazítás a tálhoz képest (nagyobb szám = lejjebb, kisebb = feljebb)
+            let targetX = (bowl.x + (bowl.width / 2) - (dog.width / 2)) + 70;
+            let targetY = bowl.y - 120; 
 
-                moveDogToExplicit(targetX, targetY, imgAsset, () => { 
-                    bowl.isFull = false; 
-                    bowl.img = bowl.emptyImg; 
-                });
-            }
+            moveDogToExplicit(targetX, targetY, imgAsset, () => { 
+                bowl.isFull = false; 
+                bowl.img = bowl.emptyImg; 
+            });
         }
     });
 
     if (clickedBowl) return;
-
     if (dog.isBusy) return;
     
+    // ==================================================================================
+    // 4. KUTYA POZÍCIÓJA BÁRHOVA TÖRTÉNŐ KATTINTÁSNÁL (Ugatás a megadott helynél)
+    // ==================================================================================
     let targetX = moveX - dog.width / 2;
     let targetY = moveY - dog.height / 2;
 
     moveDogToCustom(targetX, targetY, () => {
         dog.currentImage = dogImages.bark;
-        returnTimeout = setTimeout(() => {
-            animateBackToStart();
-        }, 2000);
+        returnTimeout = setTimeout(() => { animateBackToStart(); }, 2000);
     });
 });
 
 function moveDogToExplicit(targetX, targetY, img, onComplete) {
     dog.isBusy = true;
-    
     const animateToBowl = () => {
-        let dx = targetX - dog.x; 
-        let dy = targetY - dog.y;
+        let dx = targetX - dog.x; let dy = targetY - dog.y;
         if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
-            dog.x += dx * 0.15; 
-            dog.y += dy * 0.15;
+            dog.x += dx * 0.15; dog.y += dy * 0.15;
             dog.currentImage = dogImages.walk;
             currentAnimationId = requestAnimationFrame(animateToBowl);
         } else {
-            dog.x = targetX;
-            dog.y = targetY;
-            dog.currentImage = img;
-            
-            returnTimeout = setTimeout(() => { 
-                animateBackToStart();
-                if (onComplete) onComplete();
-            }, 2000);
+            dog.x = targetX; dog.y = targetY; dog.currentImage = img;
+            returnTimeout = setTimeout(() => { animateBackToStart(); if (onComplete) onComplete(); }, 2000);
         }
     };
     animateToBowl();
@@ -255,18 +229,14 @@ function moveDogToExplicit(targetX, targetY, img, onComplete) {
 
 function moveDogToCustom(targetX, targetY, onComplete) {
     dog.isBusy = true;
-
     const animateCustom = () => {
-        let dx = targetX - dog.x; 
-        let dy = targetY - dog.y;
+        let dx = targetX - dog.x; let dy = targetY - dog.y;
         if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
-            dog.x += dx * 0.15; 
-            dog.y += dy * 0.15;
+            dog.x += dx * 0.15; dog.y += dy * 0.15;
             dog.currentImage = dogImages.walk;
             currentAnimationId = requestAnimationFrame(animateCustom);
         } else {
-            dog.x = targetX;
-            dog.y = targetY;
+            dog.x = targetX; dog.y = targetY;
             if (onComplete) onComplete();
         }
     };
@@ -275,21 +245,17 @@ function moveDogToCustom(targetX, targetY, onComplete) {
 
 function animateBackToStart() {
     dog.isBusy = true;
-
     const stepBack = () => {
-        let dx = dog.startX - dog.x; 
-        let dy = dog.startY - dog.y;
+        let dx = dog.startX - dog.x; let dy = dog.startY - dog.y;
         if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
-            dog.x += dx * 0.15; 
-            dog.y += dy * 0.15;
+            dog.x += dx * 0.15; dog.y += dy * 0.15;
             dog.currentImage = dogImages.walk;
             currentAnimationId = requestAnimationFrame(stepBack);
         } else {
             dog.currentImage = dogImages.idle;
             dog.x = dog.startX;
             dog.y = dog.startY;
-            dog.isBusy = false;
-            currentAnimationId = null;
+            dog.isBusy = false; currentAnimationId = null;
         }
     };
     stepBack();
