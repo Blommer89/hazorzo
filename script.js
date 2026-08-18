@@ -9,7 +9,7 @@ const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
 const treeImg = new Image(); treeImg.src = "assets/tree.png";
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
-const bowlWaterEmptyImg = new Image(); bowlWaterImg.src = "assets/tál_víz_üres.png";
+const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
 const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
 const bowlFoodEmptyImg = new Image(); bowlFoodEmptyImg.src = "assets/tál_kaja_üres.png";
 const butterflyImg = new Image(); butterflyImg.src = "assets/butterfly.png"; // Pillangó kép
@@ -91,7 +91,7 @@ function requestFullscreenOnce() {
 }
 
 let imagesLoaded = 0;
-const totalImages = 17; // 16 alap kép + 1 pillangó
+const totalImages = 17; 
 function checkLoad() {
     imagesLoaded++;
     if (imagesLoaded >= totalImages) {
@@ -117,6 +117,7 @@ setTimeout(startGame, 1500);
 let currentAnimationId = null;
 let returnTimeout = null;
 let longPressTimer = null;
+let butterflyTimeout = null;
 
 // ==================================================================================
 // TAMAGOCSI IDŐZÍTŐ
@@ -142,45 +143,47 @@ function startStatsLoop() {
         if (dog.health <= 0) {
             dog.health = 0;
             dog.isDead = true;
-            butterfly.active = false; // Ha meghal, a pillangó eltűnik
+            butterfly.active = false; 
+            if (butterflyTimeout) clearTimeout(butterflyTimeout);
             dog.currentImage = dogImages.dead.complete ? dogImages.dead : dogImages.angry;
         }
     }, 1000);
 }
 
 // ==================================================================================
-// PILLANGÓ LOGIKA (Random megjelenés, ha a kutya nem csinál semmit)
+// PILLANGÓ LOGIKA (Sűrűbb megjelenés + időhagyás az észrevételhez)
 // ==================================================================================
 function startButterflyLoop() {
     setInterval(() => {
-        // Csak akkor jön be, ha él a kutya, és éppen teljesen szabad (nem elfoglalt)
         if (dog.isDead || dog.isBusy || butterfly.active) return;
 
-        // 35% esély minden ciklusban, hogy megjelenik a pillangó
-        if (Math.random() < 0.35) {
-            // Random pozíció a játéktér alsóbb/középső részén, ahol a kutya is van
+        // 45% esély, hogy sűrűbben jöjjön
+        if (Math.random() < 0.45) {
             butterfly.x = Math.random() * (canvas.width - 300) + 150;
             butterfly.y = Math.random() * 800 + 1200;
             butterfly.active = true;
 
-            // A kutya odafut a pillangóhoz
-            triggerDogAction(() => {
-                let targetX = butterfly.x - dog.width / 2 + 20;
-                let targetY = butterfly.y - dog.height / 2 + 20;
+            // Hagyunk 1.5 másodpercet, hogy a pillangó ott legyen a képernyőn, és a játékos/kutya észrevegye
+            if (butterflyTimeout) clearTimeout(butterflyTimeout);
+            butterflyTimeout = setTimeout(() => {
+                if (!butterfly.active || dog.isDead || dog.isBusy) return;
 
-                moveDogToCustom(targetX, targetY, () => {
-                    // Megérkezett, megugatja a pillangót
-                    dog.currentImage = dogImages.bark;
-                    
-                    // Pár másodperc múlva eltűnik a pillangó és a kutya visszatér
-                    returnTimeout = setTimeout(() => {
-                        butterfly.active = false;
-                        animateBackToStart();
-                    }, 2500);
+                // A kutya elindul a pillangóhoz
+                triggerDogAction(() => {
+                    let targetX = butterfly.x - dog.width / 2 + 20;
+                    let targetY = butterfly.y - dog.height / 2 + 20;
+
+                    moveDogToCustom(targetX, targetY, () => {
+                        dog.currentImage = dogImages.bark;
+                        returnTimeout = setTimeout(() => {
+                            butterfly.active = false;
+                            animateBackToStart();
+                        }, 2500);
+                    });
                 });
-            });
+            }, 1500); // 1.5 mp gondolkodási/észlelési idő
         }
-    }, 15000); // 15 másodpercenként próbálkozik
+    }, 7000); // 7 másodpercenként próbálkozik
 }
 
 // Játék újraindítása
@@ -195,6 +198,7 @@ function resetGame() {
     dog.currentImage = dogImages.idle;
     dog.isBusy = false;
     butterfly.active = false;
+    if (butterflyTimeout) clearTimeout(butterflyTimeout);
 }
 
 // ==================================================================================
@@ -323,7 +327,8 @@ canvas.addEventListener("pointerdown", (e) => {
         longPressTimer = setTimeout(() => {
             longPressTimer = null;
             dog.isBusy = true;
-            butterfly.active = false; // Ha a játékos simizi, elkergetik a pillangót
+            butterfly.active = false; 
+            if (butterflyTimeout) clearTimeout(butterflyTimeout);
             
             if (returnTimeout) clearTimeout(returnTimeout);
             if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
@@ -352,10 +357,11 @@ canvas.addEventListener("pointerup", (e) => {
     const moveY = coords.y;
     const padding = 60;
 
-    // Ha megjelent a pillangó, és ráklikkelsz közvetlenül a pillangóra, a kutya odafut és megugatja!
+    // Ha rákattintasz a pillangóra, azonnal odafut
     if (butterfly.active && moveX >= butterfly.x - 40 && moveX <= butterfly.x + butterfly.width + 40 &&
         moveY >= butterfly.y - 40 && moveY <= butterfly.y + butterfly.height + 40) {
         
+        if (butterflyTimeout) clearTimeout(butterflyTimeout);
         triggerDogAction(() => {
             let targetX = butterfly.x - dog.width / 2 + 20;
             let targetY = butterfly.y - dog.height / 2 + 20;
@@ -378,6 +384,7 @@ canvas.addEventListener("pointerup", (e) => {
         if (dog.isBusy) return;
         dog.isBusy = true;
         butterfly.active = false;
+        if (butterflyTimeout) clearTimeout(butterflyTimeout);
         if (returnTimeout) clearTimeout(returnTimeout);
         if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
 
@@ -390,6 +397,7 @@ canvas.addEventListener("pointerup", (e) => {
     if (moveX >= treeLeft.x && moveX <= treeLeft.x + treeLeft.width && moveY >= treeLeft.y && moveY <= treeLeft.y + treeLeft.height) {
         triggerDogAction(() => {
             butterfly.active = false;
+            if (butterflyTimeout) clearTimeout(butterflyTimeout);
             let targetX = treeLeft.x + (treeLeft.width / 2) - (dog.width / 2) - 60;
             let targetY = treeLeft.y + treeLeft.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
@@ -405,6 +413,7 @@ canvas.addEventListener("pointerup", (e) => {
     if (moveX >= treeRight.x && moveX <= treeRight.x + treeRight.width && moveY >= treeRight.y && moveY <= treeRight.y + treeRight.height) {
         triggerDogAction(() => {
             butterfly.active = false;
+            if (butterflyTimeout) clearTimeout(butterflyTimeout);
             let targetX = treeRight.x + (treeRight.width / 2) - (dog.width / 2) - 60;
             let targetY = treeRight.y + treeRight.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
@@ -423,6 +432,7 @@ canvas.addEventListener("pointerup", (e) => {
             clickedBowl = true;
             triggerDogAction(() => {
                 butterfly.active = false;
+                if (butterflyTimeout) clearTimeout(butterflyTimeout);
                 bowl.isFull = true; 
                 bowl.img = bowl.fullImg;
                 
@@ -451,6 +461,7 @@ canvas.addEventListener("pointerup", (e) => {
     // 5. Bárhova máshova -> Ugatás
     triggerDogAction(() => {
         butterfly.active = false;
+        if (butterflyTimeout) clearTimeout(butterflyTimeout);
         let targetX = moveX - dog.width / 2;
         let targetY = moveY - dog.height / 2;
         moveDogToCustom(targetX, targetY, () => {
