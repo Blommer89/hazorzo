@@ -122,12 +122,13 @@ function getCanvasCoords(e) {
 
 // 1. Érintés kezdete (Pointerdown)
 canvas.addEventListener("pointerdown", (e) => {
+    if (e.cancelable) e.preventDefault();
     const coords = getCanvasCoords(e);
     touchStartX = coords.x;
     touchStartY = coords.y;
     maxDistance = 0;
     
-    const padding = 50; // Kényelmesebb érintési zóna a kutyán
+    const padding = 60; // Kicsit megnövelt érintési zóna a kényelemért
     if (touchStartX >= dog.x - padding && touchStartX <= dog.x + dog.width + padding && 
         touchStartY >= dog.y - padding && touchStartY <= dog.y + dog.height + padding) {
         touchedOnDog = true;
@@ -136,9 +137,11 @@ canvas.addEventListener("pointerdown", (e) => {
     }
 });
 
-// 2. Mozgatás közbeni távolság mérése (Pointermove - ez figyeli a simogatást húzás közben)
+// 2. Mozgatás közbeni távolság mérése (Pointermove)
 canvas.addEventListener("pointermove", (e) => {
     if (!touchedOnDog) return;
+    if (e.cancelable) e.preventDefault();
+    
     const coords = getCanvasCoords(e);
     const currentDistance = Math.hypot(coords.x - touchStartX, coords.y - touchStartY);
     if (currentDistance > maxDistance) {
@@ -146,7 +149,7 @@ canvas.addEventListener("pointermove", (e) => {
     }
 });
 
-// 3. Érintés vége (Pointerup - Itt dől el minden kattintási / érintési akció)
+// 3. Érintés vége (Pointerup)
 canvas.addEventListener("pointerup", (e) => {
     const coords = getCanvasCoords(e);
     const moveX = coords.x;
@@ -160,9 +163,9 @@ canvas.addEventListener("pointerup", (e) => {
         touchedOnDog = false;
         if (dog.isBusy) return;
         
-        // Ha az ujjat elhúzták legalább 15 pixelen belül -> SIMOGATÁS (belly kép)
+        // Ha az ujjat elhúzták legalább 10-15 pixelen belül -> SIMOGATÁS (belly kép)
         // Ha nem húzták el (csak sima pöccintés) -> MORCOS (angry kép)
-        if (maxDistance > 15) {
+        if (maxDistance > 12) {
             dog.isBusy = true;
             dog.currentImage = dogImages.belly;
             setTimeout(() => { dog.currentImage = dogImages.idle; dog.isBusy = false; }, 2000);
@@ -248,7 +251,7 @@ canvas.addEventListener("pointerup", (e) => {
     });
 });
 
-// Kutya mogatása tálhoz (automatikusan kiüríti a tálat ha vége)
+// Kutya mozgatása tálhoz (automatikusan kiüríti a tálat ha vége)
 function moveDogToExplicit(targetX, targetY, img, onComplete) {
     dog.isBusy = true;
     const animateToBowl = () => {
@@ -282,7 +285,7 @@ function moveDogToCustom(targetX, targetY, onComplete) {
     animateCustom();
 }
 
-// Kutya visszasétáltatása az alagsori/kezdő pozícióba
+// Kutya visszasétáltatása a kezdőpozícióba
 function animateBackToStart() {
     dog.isBusy = true;
     const stepBack = () => {
