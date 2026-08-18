@@ -45,7 +45,7 @@ const doghouse = { x: 650, y: 300, width: 350, height: 350 };
 // - y: függőleges pozíció
 // - width / height: a tál mérete
 const bowls = {
-    water: { x: 640, y: 750, width: 130, height: 130, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    water: { x: 640, y: 650, width: 130, height: 130, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
     food: { x: 800, y: 700, width: 130, height: 130, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
 };
 
