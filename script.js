@@ -94,13 +94,12 @@ let returnTimeout = null;
 let longPressTimer = null;
 
 // ==================================================================================
-// TAMAGOCSI IDŐZÍTŐ (Lassabb, élvezhetőbb tempó)
+// TAMAGOCSI IDŐZÍTŐ
 // ==================================================================================
 function startStatsLoop() {
     setInterval(() => {
         if (dog.isDead) return;
 
-        // Finomabb, lassabb romlás (minden másodpercben csak picit nőnek)
         dog.hunger += 0.3;   
         dog.thirst += 0.4;   
         dog.bladder += 0.2;  
@@ -109,11 +108,9 @@ function startStatsLoop() {
         dog.thirst = Math.min(100, Math.max(0, dog.thirst));
         dog.bladder = Math.min(100, Math.max(0, dog.bladder));
 
-        // Csak akkor csökken a HP, ha valamelyik mutató kritikusan rossz (> 85)
         if (dog.hunger > 85 || dog.thirst > 85 || dog.bladder > 90) {
             dog.health -= 1.5;
         } else if (dog.hunger < 50 && dog.thirst < 50 && dog.bladder < 50) {
-            // Ha minden rendben, lassan visszatöltődik az életcsík
             dog.health = Math.min(100, dog.health + 0.5);
         }
 
@@ -138,13 +135,40 @@ function gameLoop() {
     
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
-    ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
+    
+    // Ha halott, a drawHUD rajzolja ki a sötétítés elé, különben normálisan rajzoljuk a kutyát
+    if (!dog.isDead) {
+        ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
+    }
 
     drawHUD();
     requestAnimationFrame(gameLoop);
 }
 
 function drawHUD() {
+    // 1. Ha a kutya meghalt
+    if (dog.isDead) {
+        // Először lehomályosítjuk a hátteret
+        ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // MAJD rárajzoljuk a halott kutyust a sötétítés FELETT, hogy teljesen tisztán látszódjon!
+        ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
+        
+        // Game Over feliratok
+        ctx.fillStyle = "#e74c3c";
+        ctx.font = "bold 70px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("A KUTYA MEGHALT!", canvas.width / 2, canvas.height / 2 - 120);
+        
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "35px Arial";
+        ctx.fillText("Nem gondoskodtál róla időben...", canvas.width / 2, canvas.height / 2 - 50);
+        ctx.textAlign = "left";
+        return; 
+    }
+
+    // 2. Normál HUD (élő kutyánál)
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
     ctx.fillRect(50, 50, 980, 140);
     ctx.strokeStyle = "#ffffff";
@@ -155,19 +179,6 @@ function drawHUD() {
     drawBar(550, 75, 400, 25, "Éhség", 100 - dog.hunger, "#e67e22");
     drawBar(80, 125, 400, 25, "Szomjúság", 100 - dog.thirst, "#3498db");
     drawBar(550, 125, 400, 25, "Pisilés", 100 - dog.bladder, "#f1c40f");
-
-    if (dog.isDead) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#e74c3c";
-        ctx.font = "bold 70px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("A KUTYA MEGHALT!", canvas.width / 2, canvas.height / 2 - 50);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "35px Arial";
-        ctx.fillText("Nem gondoskodtál róla időben...", canvas.width / 2, canvas.height / 2 + 20);
-        ctx.textAlign = "left";
-    }
 }
 
 function drawBar(x, y, w, h, label, value, color) {
@@ -197,7 +208,7 @@ function getCanvasCoords(e) {
 }
 
 // ==================================================================================
-// ÉRINTÉSEK ÉS KATTINTÁSOK KEZELÉSE (Stabilabbá téve)
+// ÉRINTÉSEK ÉS KATTINTÁSOK KEZELÉSE
 // ==================================================================================
 
 canvas.addEventListener("pointerdown", (e) => {
@@ -214,12 +225,10 @@ canvas.addEventListener("pointerdown", (e) => {
     if (startX >= dog.x - padding && startX <= dog.x + dog.width + padding && 
         startY >= dog.y - padding && startY <= dog.y + dog.height + padding) {
         
-        // Hosszú érintés indítása simizéshez
         longPressTimer = setTimeout(() => {
             longPressTimer = null;
             dog.isBusy = true;
             
-            // Megszakítjuk az esetleges futó animációkat
             if (returnTimeout) clearTimeout(returnTimeout);
             if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
 
@@ -237,7 +246,6 @@ canvas.addEventListener("pointerdown", (e) => {
 canvas.addEventListener("pointerup", (e) => {
     if (dog.isDead) return;
 
-    // Ha elengedtük mielőtt a hosszú simizés letelt volna -> Gyors kattintás / Bökés / Akció
     if (longPressTimer) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
@@ -248,8 +256,7 @@ canvas.addEventListener("pointerup", (e) => {
     const moveY = coords.y;
     const padding = 60;
 
-    // Ha úton van vagy elfoglalt, de a tálra/fára kattintottunk, engedjük felülbírálni vagy kezelni
-    // 1. Kutyára bökés (ha épp nem csinál semmit)
+    // 1. Kutyára bökés
     if (moveX >= dog.x - padding && moveX <= dog.x + dog.width + padding && 
         moveY >= dog.y - padding && moveY <= dog.y + dog.height + padding) {
         
@@ -333,7 +340,6 @@ canvas.addEventListener("pointerup", (e) => {
     });
 });
 
-// Segédfüggvény az akciók biztonságos indításához (megszakítja az előző folyamatot, ha szükséges)
 function triggerDogAction(actionCallback) {
     if (returnTimeout) { clearTimeout(returnTimeout); returnTimeout = null; }
     if (currentAnimationId) { cancelAnimationFrame(currentAnimationId); currentAnimationId = null; }
