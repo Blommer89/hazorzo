@@ -27,9 +27,9 @@ dogImages.eating.src = "assets/dog_eating.png";
 dogImages.drinking.src = "assets/dog_drinking.png";
 dogImages.bark.src = "assets/dog_bark.png";
 dogImages.pee.src = "assets/dog_pee.png";
-dogImages.dead.src = "assets/dog_dead.png"; // Opcionális: halott kép (ha nincs még ilyen fájlod, fallbackként az angry-t vagy idle-t is használhatja)
+dogImages.dead.src = "assets/dog_dead.png";
 
-// Kutya adatai (beleértve a tamagocsi statisztikákat)
+// Kutya adatai
 let dog = { 
     x: 415, y: 1650, 
     startX: 415, startY: 1650, 
@@ -40,9 +40,9 @@ let dog = {
     
     // Statisztikák (0 - 100)
     health: 100,
-    hunger: 0,    // 0 = jóllakott, 100 = halálosan éhes
-    thirst: 0,    // 0 = nem szomjas, 100 = halálosan szomjas
-    bladder: 0    // 0 = üres hólyag, 100 = mindjárt bepisil / tele van
+    hunger: 10,   
+    thirst: 10,   
+    bladder: 10   
 };
 
 // ==================================================================================
@@ -62,12 +62,12 @@ function startGame() {
     if (!gameStarted) {
         gameStarted = true;
         gameLoop();
-        startStatsLoop(); // Elindítjuk az életmód-számlálót
+        startStatsLoop(); 
     }
 }
 
 let imagesLoaded = 0;
-const totalImages = 16; // 15 kép + 1 dead kép
+const totalImages = 16;
 function checkLoad() {
     imagesLoaded++;
     if (imagesLoaded >= totalImages) {
@@ -94,31 +94,29 @@ let returnTimeout = null;
 let longPressTimer = null;
 
 // ==================================================================================
-// TAMAGOCSI IDŐZÍTŐ (Minden másodpercben romlanak a statisztikák)
+// TAMAGOCSI IDŐZÍTŐ (Lassabb, élvezhetőbb tempó)
 // ==================================================================================
 function startStatsLoop() {
     setInterval(() => {
         if (dog.isDead) return;
 
-        // Szükségletek romlása (növekedése)
-        dog.hunger += 1.5;   // Idővel éhezik
-        dog.thirst += 2.0;   // Gyorsabban szomjazik
-        dog.bladder += 1.0;  // Telik a hólyagja
+        // Finomabb, lassabb romlás (minden másodpercben csak picit nőnek)
+        dog.hunger += 0.3;   
+        dog.thirst += 0.4;   
+        dog.bladder += 0.2;  
 
-        // Határok biztosítása (0 és 100 között)
         dog.hunger = Math.min(100, Math.max(0, dog.hunger));
         dog.thirst = Math.min(100, Math.max(0, dog.thirst));
         dog.bladder = Math.min(100, Math.max(0, dog.bladder));
 
-        // Ha éhes, szomjas vagy tele van a hólyaga, az életcsík csökken
-        if (dog.hunger > 80 || dog.thirst > 80 || dog.bladder > 90) {
-            dog.health -= 3;
-        } else {
-            // Ha minden rendben, lassan gyógyul/stabil
-            dog.health = Math.min(100, dog.health + 1);
+        // Csak akkor csökken a HP, ha valamelyik mutató kritikusan rossz (> 85)
+        if (dog.hunger > 85 || dog.thirst > 85 || dog.bladder > 90) {
+            dog.health -= 1.5;
+        } else if (dog.hunger < 50 && dog.thirst < 50 && dog.bladder < 50) {
+            // Ha minden rendben, lassan visszatöltődik az életcsík
+            dog.health = Math.min(100, dog.health + 0.5);
         }
 
-        // Halál ellenőrzése
         if (dog.health <= 0) {
             dog.health = 0;
             dog.isDead = true;
@@ -128,47 +126,36 @@ function startStatsLoop() {
 }
 
 // ==================================================================================
-// FŐ JÁTÉKCIKLUS (Kirajzolás + UI / Életcsíkok)
+// FŐ JÁTÉKCIKLUS
 // ==================================================================================
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
     
-    // Háttérelemek
     ctx.drawImage(treeImg, treeLeft.x, treeLeft.y, treeLeft.width, treeLeft.height);
     ctx.drawImage(treeImg, treeRight.x, treeRight.y, treeRight.width, treeRight.height);
     ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
     
-    // Előtér elemek
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
 
-    // ==============================================================================
-    // UI: ÉLETCSÍK ÉS SZÜKSÉGLETEK KIRAJZOLÁSA A KÉPERNYŐ TETEJÉRE
-    // ==============================================================================
     drawHUD();
-    
     requestAnimationFrame(gameLoop);
 }
 
 function drawHUD() {
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    ctx.fillRect(50, 50, 980, 140); // Háttérdoboz a statoknak
+    ctx.fillRect(50, 50, 980, 140);
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 4;
     ctx.strokeRect(50, 50, 980, 140);
 
-    // 1. Életerő (HP) csík
     drawBar(80, 75, 400, 25, "Életcsík", dog.health, "#e74c3c");
-    // 2. Éhség csík
     drawBar(550, 75, 400, 25, "Éhség", 100 - dog.hunger, "#e67e22");
-    // 3. Szomjúság csík
     drawBar(80, 125, 400, 25, "Szomjúság", 100 - dog.thirst, "#3498db");
-    // 4. Hólyag / Pisilés csík
     drawBar(550, 125, 400, 25, "Pisilés", 100 - dog.bladder, "#f1c40f");
 
-    // Ha a kutya meghalt, írjuk ki pirossal
     if (dog.isDead) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -179,32 +166,27 @@ function drawHUD() {
         ctx.fillStyle = "#ffffff";
         ctx.font = "35px Arial";
         ctx.fillText("Nem gondoskodtál róla időben...", canvas.width / 2, canvas.height / 2 + 20);
-        ctx.textAlign = "left"; // Visszaállítva
+        ctx.textAlign = "left";
     }
 }
 
-// Segédfüggvény stat csíkok rajzolásához
 function drawBar(x, y, w, h, label, value, color) {
     ctx.fillStyle = "#ffffff";
     ctx.font = "22px Arial";
     ctx.fillText(`${label}:`, x, y - 5);
 
-    // Háttér (üres rész)
     ctx.fillStyle = "#444444";
     ctx.fillRect(x + 110, y - 20, w - 110, h);
 
-    // Kitöltött rész
     ctx.fillStyle = color;
     let fillWidth = Math.max(0, ((w - 110) * (value / 100)));
     ctx.fillRect(x + 110, y - 20, fillWidth, h);
 
-    // Keret
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2;
     ctx.strokeRect(x + 110, y - 20, w - 110, h);
 }
 
-// Koordináta konvertáló
 function getCanvasCoords(e) {
     const rect = canvas.getBoundingClientRect();
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
@@ -215,103 +197,109 @@ function getCanvasCoords(e) {
 }
 
 // ==================================================================================
-// ÉRINTÉSEK ÉS KATTINTÁSOK KEZELÉSE
+// ÉRINTÉSEK ÉS KATTINTÁSOK KEZELÉSE (Stabilabbá téve)
 // ==================================================================================
 
 canvas.addEventListener("pointerdown", (e) => {
-    if (dog.isDead) return; // Ha halott, nem reagál
+    if (dog.isDead) return;
     if (e.cancelable) e.preventDefault();
+    
     const coords = getCanvasCoords(e);
     const startX = coords.x;
     const startY = coords.y;
 
-    if (returnTimeout) { clearTimeout(returnTimeout); returnTimeout = null; }
-    if (currentAnimationId) { cancelAnimationFrame(currentAnimationId); currentAnimationId = null; }
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
 
     const padding = 60;
     if (startX >= dog.x - padding && startX <= dog.x + dog.width + padding && 
         startY >= dog.y - padding && startY <= dog.y + dog.height + padding) {
         
-        if (dog.isBusy) return;
-
-        // Hosszú érintés -> Simogatás (javítja a kedvét / életét is picit)
+        // Hosszú érintés indítása simizéshez
         longPressTimer = setTimeout(() => {
-            dog.isBusy = true;
-            dog.currentImage = dogImages.belly;
             longPressTimer = null;
-            dog.health = Math.min(100, dog.health + 5); // Simi ad egy kis HP-t!
+            dog.isBusy = true;
+            
+            // Megszakítjuk az esetleges futó animációkat
+            if (returnTimeout) clearTimeout(returnTimeout);
+            if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+
+            dog.currentImage = dogImages.belly;
+            dog.health = Math.min(100, dog.health + 5); 
             
             returnTimeout = setTimeout(() => { 
                 dog.currentImage = dogImages.idle; 
                 dog.isBusy = false; 
             }, 2000);
         }, 400);
-
-        return;
     }
 });
 
 canvas.addEventListener("pointerup", (e) => {
     if (dog.isDead) return;
 
+    // Ha elengedtük mielőtt a hosszú simizés letelt volna -> Gyors kattintás / Bökés / Akció
     if (longPressTimer) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
+    }
 
-        const coords = getCanvasCoords(e);
-        const moveX = coords.x;
-        const moveY = coords.y;
-        const padding = 60;
+    const coords = getCanvasCoords(e);
+    const moveX = coords.x;
+    const moveY = coords.y;
+    const padding = 60;
 
-        // 1. Kutyára bökés -> Morcos
-        if (moveX >= dog.x - padding && moveX <= dog.x + dog.width + padding && 
-            moveY >= dog.y - padding && moveY <= dog.y + dog.height + padding) {
-            
-            if (dog.isBusy) return;
-            dog.isBusy = true;
-            dog.currentImage = dogImages.angry;
-            setTimeout(() => { dog.currentImage = dogImages.idle; dog.isBusy = false; }, 1500);
-            return;
-        }
+    // Ha úton van vagy elfoglalt, de a tálra/fára kattintottunk, engedjük felülbírálni vagy kezelni
+    // 1. Kutyára bökés (ha épp nem csinál semmit)
+    if (moveX >= dog.x - padding && moveX <= dog.x + dog.width + padding && 
+        moveY >= dog.y - padding && moveY <= dog.y + dog.height + padding) {
+        
+        if (dog.isBusy) return;
+        dog.isBusy = true;
+        if (returnTimeout) clearTimeout(returnTimeout);
+        if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
 
-        // 2. BAL FA (Pisilés -> Nullázza a hólyag-statisztikát!)
-        if (moveX >= treeLeft.x && moveX <= treeLeft.x + treeLeft.width && moveY >= treeLeft.y && moveY <= treeLeft.y + treeLeft.height) {
-            if (dog.isBusy) return;
+        dog.currentImage = dogImages.angry;
+        returnTimeout = setTimeout(() => { dog.currentImage = dogImages.idle; dog.isBusy = false; }, 1500);
+        return;
+    }
+
+    // 2. BAL FA (Pisilés)
+    if (moveX >= treeLeft.x && moveX <= treeLeft.x + treeLeft.width && moveY >= treeLeft.y && moveY <= treeLeft.y + treeLeft.height) {
+        triggerDogAction(() => {
             let targetX = treeLeft.x + (treeLeft.width / 2) - (dog.width / 2) - 60;
             let targetY = treeLeft.y + treeLeft.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
                 dog.currentImage = dogImages.pee;
-                dog.bladder = 0; // Kiszáradt a hólyag!
+                dog.bladder = 0; 
                 returnTimeout = setTimeout(() => { animateBackToStart(); }, 2500);
             });
-            return;
-        }
+        });
+        return;
+    }
 
-        // 3. JOBB FA (Pisilés -> Nullázza a hólyag-statisztikát!)
-        if (moveX >= treeRight.x && moveX <= treeRight.x + treeRight.width && moveY >= treeRight.y && moveY <= treeRight.y + treeRight.height) {
-            if (dog.isBusy) return;
+    // 3. JOBB FA (Pisilés)
+    if (moveX >= treeRight.x && moveX <= treeRight.x + treeRight.width && moveY >= treeRight.y && moveY <= treeRight.y + treeRight.height) {
+        triggerDogAction(() => {
             let targetX = treeRight.x + (treeRight.width / 2) - (dog.width / 2) - 60;
             let targetY = treeRight.y + treeRight.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
                 dog.currentImage = dogImages.pee;
-                dog.bladder = 0; // Kiszáradt a hólyag!
+                dog.bladder = 0; 
                 returnTimeout = setTimeout(() => { animateBackToStart(); }, 2500);
             });
-            return;
-        }
+        });
+        return;
+    }
 
-        // 4. TÁLAK (Evés / Ivás -> Csökkentik az éhséget és szomjúságot!)
-        let clickedBowl = false;
-        Object.values(bowls).forEach(bowl => {
-            if (moveX >= bowl.x && moveX <= bowl.x + bowl.width && moveY >= bowl.y && moveY <= bowl.y + bowl.height) {
-                clickedBowl = true;
-                if (dog.isBusy) return;
-                
+    // 4. TÁLAK (Etetés / Itatás)
+    let clickedBowl = false;
+    Object.values(bowls).forEach(bowl => {
+        if (moveX >= bowl.x && moveX <= bowl.x + bowl.width && moveY >= bowl.y && moveY <= bowl.y + bowl.height) {
+            clickedBowl = true;
+            triggerDogAction(() => {
                 bowl.isFull = true; 
                 bowl.img = bowl.fullImg;
                 
-                dog.isBusy = true;
                 const isFoodBowl = (bowl === bowls.food);
                 const imgAsset = isFoodBowl ? dogImages.eating : dogImages.drinking;
                 
@@ -322,28 +310,36 @@ canvas.addEventListener("pointerup", (e) => {
                     bowl.isFull = false; 
                     bowl.img = bowl.emptyImg;
                     
-                    // Ha evett, csökken az éhség; ha ivott, csökken a szomjúság
                     if (isFoodBowl) {
-                        dog.hunger = Math.max(0, dog.hunger - 50);
+                        dog.hunger = Math.max(0, dog.hunger - 40);
                     } else {
-                        dog.thirst = Math.max(0, dog.thirst - 50);
+                        dog.thirst = Math.max(0, dog.thirst - 40);
                     }
                 });
-            }
-        });
+            });
+        }
+    });
 
-        if (clickedBowl) return;
-        if (dog.isBusy) return;
-        
-        // 5. Bárhova máshova -> Ugatás
+    if (clickedBowl) return;
+    
+    // 5. Bárhova máshova -> Ugatás
+    triggerDogAction(() => {
         let targetX = moveX - dog.width / 2;
         let targetY = moveY - dog.height / 2;
         moveDogToCustom(targetX, targetY, () => {
             dog.currentImage = dogImages.bark;
             returnTimeout = setTimeout(() => { animateBackToStart(); }, 2000);
         });
-    }
+    });
 });
+
+// Segédfüggvény az akciók biztonságos indításához (megszakítja az előző folyamatot, ha szükséges)
+function triggerDogAction(actionCallback) {
+    if (returnTimeout) { clearTimeout(returnTimeout); returnTimeout = null; }
+    if (currentAnimationId) { cancelAnimationFrame(currentAnimationId); currentAnimationId = null; }
+    dog.isBusy = false;
+    actionCallback();
+}
 
 // ==================================================================================
 // MOZGATÓ FÜGGVÉNYEK
