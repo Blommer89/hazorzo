@@ -15,11 +15,11 @@ let tailWagInterval = null;
 let postmanTimeout = null;
 let gameStarted = false;
 
-// Alap képek betöltése (javított kerites.png útvonallal)
+// Alap képek betöltése
 const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
 const treeImg = new Image(); treeImg.src = "assets/tree.png";
-const keritesImg = new Image(); keritesImg.src = "assets/kerites.png"; // Javítva kerites.png-re
+const keritesImg = new Image(); keritesImg.src = "assets/kerites.png"; 
 const postmanImg = new Image(); postmanImg.src = "assets/postman.png";
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
 const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
@@ -124,13 +124,17 @@ loadGameData();
 
 let butterfly = { x: 0, y: 0, width: 100, height: 100, active: false };
 let squirrel = { x: 0, y: 0, baseX: 0, baseY: 0, width: 100, height: 100, active: false };
-let postman = { x: 150, y: 2100, width: 150, height: 150, active: false };
+
+// Postás méretének növelése, hogy arányos legyen a kutyával
+let postman = { x: 150, y: 2020, width: 220, height: 220, active: false };
 
 // Környezeti elemek
 const treeLeft = { x: 80, y: 200, width: 320, height: 420 };
 const treeRight = { x: 680, y: 350, width: 320, height: 420 };
 const doghouse = { x: 600, y: 950, width: 300, height: 300 };
-const fence = { x: 50, y: 2150, width: 980, height: 120 };
+
+// Kerítés pozíció és magasság beállítása (a szélességet a csempézés oldja meg)
+const fence = { y: 2080, height: 160 };
 
 const bowls = {
     water: { x: 590, y: 1300, width: 90, height: 90, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
@@ -426,9 +430,12 @@ function gameLoop() {
     ctx.drawImage(treeImg, treeRight.x, treeRight.y, treeRight.width, treeRight.height);
     ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
     
-    // Biztonságos kerítés rajzolás
+    // Összefüggő kerítés sor rajzolása egymás mellé csempézve (nyújtás nélkül)
     if (keritesImg.complete && keritesImg.naturalWidth > 0) {
-        ctx.drawImage(keritesImg, fence.x, fence.y, fence.width, fence.height);
+        let fenceWidth = 260; // Egy kerítéselem szélessége a képernyőn
+        for (let xPos = 0; xPos < canvas.width; xPos += fenceWidth) {
+            ctx.drawImage(keritesImg, xPos, fence.y, fenceWidth, fence.height);
+        }
     }
     
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
