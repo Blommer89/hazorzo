@@ -3,18 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Házőrző</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
+    <title>Virtuális Kutya Játék</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; /* Megakadályozza a véletlen nagyítást/görgetést mobilon */
+        }
+        canvas {
+            display: block;
+            background-color: #222;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+    </style>
+
+    <!-- Mobilos konzol (Eruda) a hibakereséshez: a képernyő alján egy kis fogaskerék jelenik meg -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-        <!-- Diszkrét frissítés gomb a jobb felső sarokban -->
-        <button id="reload-btn" onclick="location.reload()" title="Frissítés">🔄</button>
-    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Itt töltődik be a játék logikája -->
     <script src="script.js"></script>
 </body>
 </html>
