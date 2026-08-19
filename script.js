@@ -148,8 +148,19 @@ function requestFullscreenOnce() {
     }
 }
 
+// Biztonságos és dinamikus képbetöltés kezelő
 let imagesLoaded = 0;
-const totalImages = 21; // Mivel új kép érkezett (dog_sleep.png), 21 lett a kötelező képek száma
+const imagesToLoad = [
+    yardImg, doghouseImg, treeImg, 
+    bowlWaterImg, bowlWaterEmptyImg, bowlFoodImg, bowlFoodEmptyImg,
+    butterflyImg, squirrelImg,
+    dogImages.idle, dogImages.idle2, dogImages.sleep, dogImages.angry, 
+    dogImages.belly, dogImages.walk, dogImages.eating, dogImages.drinking,
+    dogImages.bark, dogImages.pee, dogImages.dead, dogImages.sick
+];
+
+const totalImages = imagesToLoad.length;
+
 function checkLoad() {
     imagesLoaded++;
     if (imagesLoaded >= totalImages) {
@@ -157,21 +168,18 @@ function checkLoad() {
     }
 }
 
-yardImg.onload = checkLoad; yardImg.onerror = checkLoad;
-doghouseImg.onload = checkLoad; doghouseImg.onerror = checkLoad;
-treeImg.onload = checkLoad; treeImg.onerror = checkLoad;
-butterflyImg.onload = checkLoad; butterflyImg.onerror = checkLoad;
-squirrelImg.onload = checkLoad; squirrelImg.onerror = checkLoad; 
-[bowlWaterImg, bowlWaterEmptyImg, bowlFoodImg, bowlFoodEmptyImg].forEach(img => {
+imagesToLoad.forEach(img => {
     img.onload = checkLoad;
-    img.onerror = checkLoad;
-});
-Object.values(dogImages).forEach(img => {
-    img.onload = checkLoad;
-    img.onerror = checkLoad;
+    img.onerror = checkLoad; // Hiba esetén is továbblép, így nem lesz fekete képernyő
 });
 
-setTimeout(startGame, 1500);
+// Biztonsági háló: ha bármi miatt beakadna a betöltés, 1.5 másodperc után kényszerítjük az indítást
+setTimeout(() => {
+    if (!gameStarted) {
+        console.warn("Biztonsági indítás aktiválva.");
+        startGame();
+    }
+}, 1500);
 
 let currentAnimationId = null;
 let returnTimeout = null;
