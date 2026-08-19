@@ -48,7 +48,7 @@ dogImages.pee.src = "assets/dog_pee.png";
 dogImages.dead.src = "assets/dog_dead.png";
 dogImages.sick.src = "assets/dog_sick.png";
 
-// Kutya adatai
+// Kutya adatai (visszaállítva az eredeti, stabil pozíciókra)
 let dog = { 
     x: 415, y: 1650, 
     startX: 415, startY: 1650, 
@@ -70,7 +70,7 @@ let postman = {
     x: -150, y: 1830,
     width: 150, height: 200,
     active: false,
-    speed: 5
+    speed: 12 // Kicsit gyorsabb, dinamikusabb mozgás
 };
 
 let keritesPattern = null;
@@ -197,7 +197,7 @@ setTimeout(() => {
 }, 1500);
 
 // ==================================================================================
-// POSTÁS ÉS KUTYA INTERAKCIÓ
+// POSTÁS ÉS KUTYA INTERAKCIÓ (2 percenként)
 // ==================================================================================
 
 function startPostmanEventLoop() {
@@ -243,13 +243,14 @@ function onPostmanArrived() {
     if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
     dog.isBusy = true;
 
-    let targetDogX = postman.x + postman.width + 20; 
-    let targetDogY = 1800;
+    // A kutya a postás mellé szalad a kerítéshez
+    let targetDogX = postman.x + postman.width + 10; 
+    let targetDogY = 1650; // Visszaállítva a helyes magasságra
 
     moveDogToCustom(targetDogX, targetDogY, () => {
         if (dog.isDead) return;
         dog.isBarkingAtPostman = true;
-        dog.currentImage = dogImages.bark;
+        dog.currentImage = dogImages.bark; // Ugatás kép
         
         returnTimeout = setTimeout(() => {
             if (dog.isDead) return;
@@ -258,7 +259,7 @@ function onPostmanArrived() {
             
             animateBackToStart();
             startPostmanDeparture();
-        }, 4000);
+        }, 4000); // 4 másodperc ugatás
     });
 }
 
@@ -278,7 +279,7 @@ function startPostmanDeparture() {
 }
 
 // ==================================================================================
-// MOZGATÁS ÉS ANIMÁCIÓS SEGÉDEK
+// GYORS MOZGATÁSI SEGÉDEK (Eredeti tempó)
 // ==================================================================================
 
 function moveDogTo(targetX, targetY, targetImage, onArrived) {
@@ -286,7 +287,7 @@ function moveDogTo(targetX, targetY, targetImage, onArrived) {
     dog.isBusy = true;
     if (tailWagInterval) clearInterval(tailWagInterval);
 
-    let speed = 6;
+    let speed = 15; // Gyors, dinamikus mozgás (nem lassú)
     const step = () => {
         if (dog.isDead) return;
         let dx = targetX - dog.x;
@@ -309,7 +310,7 @@ function moveDogTo(targetX, targetY, targetImage, onArrived) {
 }
 
 function moveDogToCustom(targetX, targetY, callback) {
-    let speed = 6;
+    let speed = 15; // Gyors, dinamikus mozgás
     const step = () => {
         if (dog.isDead) return;
         let dx = targetX - dog.x;
@@ -421,7 +422,6 @@ canvas.addEventListener("click", (e) => {
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
-    // Ha halott, újraindítás gomb
     if (dog.isDead) {
         if (x >= resetButton.x && x <= resetButton.x + resetButton.width &&
             y >= resetButton.y && y <= resetButton.y + resetButton.height) {
@@ -475,7 +475,7 @@ canvas.addEventListener("click", (e) => {
         return;
     }
 
-    // Kutya simogatás / mérgeskedés kattintás
+    // Kutya simogatás
     if (x >= dog.x && x <= dog.x + dog.width && y >= dog.y && y <= dog.y + dog.height) {
         dog.isBusy = true;
         if (tailWagInterval) clearInterval(tailWagInterval);
@@ -559,7 +559,6 @@ function gameLoop() {
         ctx.font = "bold 60px sans-serif";
         ctx.fillText("A KUTYA ELPUSZTULT", 220, 1050);
 
-        // Újraindítás gomb
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(resetButton.x, resetButton.y, resetButton.width, resetButton.height);
         ctx.fillStyle = "#000000";
