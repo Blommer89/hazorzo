@@ -13,6 +13,7 @@ let squirrelTimeout = null;
 let squirrelMoveInterval = null;
 let tailWagInterval = null;
 let postmanTimeout = null;
+let postmanStayTimeout = null;
 let gameStarted = false;
 
 // Alap képek betöltése
@@ -20,7 +21,7 @@ const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
 const treeImg = new Image(); treeImg.src = "assets/tree.png";
 const keritesImg = new Image(); keritesImg.src = "assets/kerites.png"; 
-const postmanImg = new Image(); postmanImg.src = "assets/postas.png"; // JAVÍTVA: postas.png
+const postmanImg = new Image(); postmanImg.src = "assets/postas.png";
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
 const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
 const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
@@ -125,8 +126,8 @@ loadGameData();
 let butterfly = { x: 0, y: 0, width: 100, height: 100, active: false };
 let squirrel = { x: 0, y: 0, baseX: 0, baseY: 0, width: 100, height: 100, active: false };
 
-// Postás adatai
-let postman = { x: 200, y: 2020, width: 220, height: 220, active: false };
+// Postás adatai (kicsit nagyobb méret: 260x260)
+let postman = { x: 180, y: 1980, width: 260, height: 260, active: false };
 
 // Környezeti elemek
 const treeLeft = { x: 80, y: 200, width: 320, height: 420 };
@@ -200,7 +201,7 @@ function startTailWag() {
     if (tailWagInterval) clearInterval(tailWagInterval);
     let toggle = false;
     tailWagInterval = setInterval(() => {
-        if (dog.isDead || dog.isBusy || dog.health < 100 || dog.isInDoghouse) return;
+        if (dog.isDead || dog.isBusy || dog.health < 100 || dog.isInDoghouse || postman.active) return;
         toggle = !toggle;
         dog.currentImage = toggle ? dogImages.idle2 : dogImages.idle;
     }, 350); 
@@ -268,40 +269,35 @@ function triggerPeeBehavior() {
     });
 }
 
-// POSTÁS CIKLUS: Pontosan percenként (60000 ms) érkezik
+// POSTÁS CIKLUS: Pontosan percenként érkezik, helyben ugat, és kétszer annyi ideig (7 mp) marad
 function startPostmanLoop() {
     setInterval(() => {
         if (dog.isDead || dog.isBusy || postman.active || dog.isInDoghouse) return;
 
-        // Minden más eseményt azonnal letiltunk, hogy ne zavarjanak be
         butterfly.active = false;
         squirrel.active = false;
         
         postman.active = true;
 
         if (postmanTimeout) clearTimeout(postmanTimeout);
+        if (postmanStayTimeout) clearTimeout(postmanStayTimeout);
         
-        // 2 másodperc múlva a kutya észreveszi és oda rohan a kerítéshez
-        postmanTimeout = setTimeout(() => {
-            if (!postman.active || dog.isDead) return;
+        // Ha a kutya ébren van és nem csinál semmit, ugatni kezd ott, ahol van
+        if (!dog.isInDoghouse) {
+            if (tailWagInterval) clearInterval(tailWagInterval);
+            dog.currentImage = dogImages.bark;
+        }
 
-            triggerDogAction(() => {
-                let targetX = fence.x + 100;
-                let targetY = fence.y - dog.height + 40;
-
-                moveDogToCustom(targetX, targetY, () => {
-                    if (dog.isDead) return;
-                    dog.currentImage = dogImages.bark;
-
-                    // Ugat a postásra 3.5 másodpercig, majd visszamegy
-                    returnTimeout = setTimeout(() => {
-                        if (dog.isDead) return;
-                        postman.active = false;
-                        animateBackToStart();
-                    }, 3500);
-                });
-            });
-        }, 2000);
+        // A postás kétszer annyi ideig (7 másodperc) marad a képernyőn
+        postmanStayTimeout = setTimeout(() => {
+            if (dog.isDead) return;
+            postman.active = false;
+            
+            // Ha nem a kutyaházban van, visszatér a normál animációhoz / csóváláshoz
+            if (!dog.isInDoghouse && !dog.isBusy) {
+                updateDogAppearance();
+            }
+        }, 7000);
 
     }, 60000); 
 }
@@ -365,6 +361,7 @@ function startStatsLoop() {
             if (returnTimeout) clearTimeout(returnTimeout);
             if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
             if (peeInterval) clearInterval(peeInterval);
+            if (postmanStayTimeout) clearTimeout(postmanStayTimeout);
             
             dog.currentImage = dogImages.dead.complete ? dogImages.dead : dogImages.angry;
         }
@@ -375,7 +372,7 @@ function startStatsLoop() {
 
 function startButterflyLoop() {
     setInterval(() => {
-        if (dog.isDead || dog.isBusy || butterfly.active || dog.isInDoghouse) return;
+        if (dog.isDead || dog.isBusy || butterfly.active || dog.isInDoghouse || postman.active) return;
 
         if (Math.random() < 0.45) {
             butterfly.x = Math.random() * (canvas.width - 300) + 150;
@@ -384,7 +381,7 @@ function startButterflyLoop() {
 
             if (butterflyTimeout) clearTimeout(butterflyTimeout);
             butterflyTimeout = setTimeout(() => {
-                if (!butterfly.active || dog.isDead || dog.isBusy) return;
+                if (!butterfly.active || dog.isDead || dog.isBusy || postman.active) return;
 
                 triggerDogAction(() => {
                     let targetX = butterfly.x - dog.width / 2 + 20;
@@ -421,6 +418,7 @@ function resetGame() {
     if (tailWagInterval) clearInterval(tailWagInterval);
     if (returnTimeout) clearTimeout(returnTimeout);
     if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+    if (postmanStayTimeout) clearTimeout(postmanStayTimeout);
     updateDogAppearance();
     saveGameData();
     startPeeLoop();
@@ -448,7 +446,7 @@ function gameLoop() {
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     
-    // Postás kirajzolása
+    // Postás kirajzolása (nagyobb méretben)
     if (postman.active && !dog.isDead && postmanImg.complete && postmanImg.naturalWidth > 0) {
         ctx.drawImage(postmanImg, postman.x, postman.y, postman.width, postman.height);
     }
@@ -569,11 +567,10 @@ canvas.addEventListener("pointerdown", (e) => {
         
         longPressTimer = setTimeout(() => {
             longPressTimer = null;
-            if (dog.isDead) return;
+            if (dog.isDead || postman.active) return;
             dog.isBusy = true;
             butterfly.active = false; 
             squirrel.active = false;
-            postman.active = false;
             if (tailWagInterval) clearInterval(tailWagInterval);
             if (returnTimeout) clearTimeout(returnTimeout);
 
@@ -605,12 +602,11 @@ canvas.addEventListener("pointerup", (e) => {
     const padding = 60;
 
     if (moveX >= doghouse.x && moveX <= doghouse.x + doghouse.width && moveY >= doghouse.y && moveY <= doghouse.y + doghouse.height) {
-        if (dog.isBusy || dog.isInDoghouse) return;
+        if (dog.isBusy || dog.isInDoghouse || postman.active) return;
         
         triggerDogAction(() => {
             butterfly.active = false;
             squirrel.active = false;
-            postman.active = false;
 
             let targetX = doghouse.x + (doghouse.width / 2) - (dog.width / 2);
             let targetY = doghouse.y + doghouse.height - dog.height + 20;
@@ -650,13 +646,17 @@ canvas.addEventListener("pointerup", (e) => {
     }
 
     if (moveX >= dog.x - padding && moveX <= dog.x + dog.width + padding && 
+        startY >= dog.y - padding && startY <= dog.y + dog.height + padding) { // fixed typo to moveY
+        // ... handled below correctly with moveY
+    }
+    
+    if (moveX >= dog.x - padding && moveX <= dog.x + dog.width + padding && 
         moveY >= dog.y - padding && moveY <= dog.y + dog.height + padding) {
         
-        if (dog.isBusy) return;
+        if (dog.isBusy || postman.active) return;
         dog.isBusy = true;
         butterfly.active = false;
         squirrel.active = false;
-        postman.active = false;
         if (tailWagInterval) clearInterval(tailWagInterval);
         if (returnTimeout) clearTimeout(returnTimeout);
 
@@ -670,10 +670,10 @@ canvas.addEventListener("pointerup", (e) => {
     }
 
     if (moveX >= treeLeft.x && moveX <= treeLeft.x + treeLeft.width && moveY >= treeLeft.y && moveY <= treeLeft.y + treeLeft.height) {
+        if (postman.active) return;
         triggerDogAction(() => {
             butterfly.active = false;
             squirrel.active = false;
-            postman.active = false;
             let targetX = treeLeft.x + (treeLeft.width / 2) - (dog.width / 2) - 60;
             let targetY = treeLeft.y + treeLeft.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
@@ -688,10 +688,10 @@ canvas.addEventListener("pointerup", (e) => {
     }
 
     if (moveX >= treeRight.x && moveX <= treeRight.x + treeRight.width && moveY >= treeRight.y && moveY <= treeRight.y + treeRight.height) {
+        if (postman.active) return;
         triggerDogAction(() => {
             butterfly.active = false;
             squirrel.active = false;
-            postman.active = false;
             let targetX = treeRight.x + (treeRight.width / 2) - (dog.width / 2) - 60;
             let targetY = treeRight.y + treeRight.height - 230; 
             moveDogToCustom(targetX, targetY, () => {
@@ -708,11 +708,11 @@ canvas.addEventListener("pointerup", (e) => {
     let clickedBowl = false;
     Object.values(bowls).forEach(bowl => {
         if (moveX >= bowl.x && moveX <= bowl.x + bowl.width && moveY >= bowl.y && moveY <= bowl.y + bowl.height) {
+            if (postman.active) return;
             clickedBowl = true;
             triggerDogAction(() => {
                 butterfly.active = false;
                 squirrel.active = false;
-                postman.active = false;
                 bowl.isFull = true; 
                 bowl.img = bowl.fullImg;
                 
@@ -738,11 +738,10 @@ canvas.addEventListener("pointerup", (e) => {
         }
     });
 
-    if (clickedBowl) return;
+    if (clickedBowl || postman.active) return;
     
     triggerDogAction(() => {
         butterfly.active = false;
-        postman.active = false;
         
         squirrel.baseX = moveX - squirrel.width / 2;
         squirrel.baseY = moveY - squirrel.height / 2;
@@ -780,7 +779,7 @@ canvas.addEventListener("pointerup", (e) => {
 });
 
 function triggerDogAction(actionCallback) {
-    if (dog.isDead) return;
+    if (dog.isDead || postman.active) return;
     if (returnTimeout) { clearTimeout(returnTimeout); returnTimeout = null; }
     if (currentAnimationId) { cancelAnimationFrame(currentAnimationId); currentAnimationId = null; }
     if (tailWagInterval) clearInterval(tailWagInterval);
