@@ -273,9 +273,15 @@ function startPostmanLoop() {
     setInterval(() => {
         if (dog.isDead || dog.isBusy || postman.active || dog.isInDoghouse) return;
 
+        // Minden más eseményt azonnal letiltunk, hogy ne zavarjanak be
+        butterfly.active = false;
+        squirrel.active = false;
+        
         postman.active = true;
 
         if (postmanTimeout) clearTimeout(postmanTimeout);
+        
+        // 2 másodperc múlva a kutya észreveszi és oda rohan a kerítéshez
         postmanTimeout = setTimeout(() => {
             if (!postman.active || dog.isDead) return;
 
@@ -287,6 +293,7 @@ function startPostmanLoop() {
                     if (dog.isDead) return;
                     dog.currentImage = dogImages.bark;
 
+                    // Ugat a postásra 3.5 másodpercig, majd visszamegy
                     returnTimeout = setTimeout(() => {
                         if (dog.isDead) return;
                         postman.active = false;
