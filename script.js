@@ -125,15 +125,15 @@ loadGameData();
 let butterfly = { x: 0, y: 0, width: 100, height: 100, active: false };
 let squirrel = { x: 0, y: 0, baseX: 0, baseY: 0, width: 100, height: 100, active: false };
 
-// Postás méretének növelése, hogy arányos legyen a kutyával
-let postman = { x: 150, y: 2020, width: 220, height: 220, active: false };
+// Postás adatai (a kerítés közelében áll meg)
+let postman = { x: 200, y: 2020, width: 220, height: 220, active: false };
 
 // Környezeti elemek
 const treeLeft = { x: 80, y: 200, width: 320, height: 420 };
 const treeRight = { x: 680, y: 350, width: 320, height: 420 };
 const doghouse = { x: 600, y: 950, width: 300, height: 300 };
 
-// Kerítés pozíció és magasság beállítása (a szélességet a csempézés oldja meg)
+// Kerítés pozíció és magasság
 const fence = { y: 2080, height: 160 };
 
 const bowls = {
@@ -268,35 +268,38 @@ function triggerPeeBehavior() {
     });
 }
 
+// POSTÁS CIKLUS: Pontosan percenként (60000 ms) érkezik
 function startPostmanLoop() {
     setInterval(() => {
         if (dog.isDead || dog.isBusy || postman.active || dog.isInDoghouse) return;
 
-        if (Math.random() < 0.35) {
-            postman.active = true;
+        // Postás megjelenik a kerítésnél
+        postman.active = true;
 
-            if (postmanTimeout) clearTimeout(postmanTimeout);
-            postmanTimeout = setTimeout(() => {
-                if (!postman.active || dog.isDead || dog.isBusy) return;
+        if (postmanTimeout) clearTimeout(postmanTimeout);
+        // 2 másodperc után a kutya észreveszi és oda rohan ugatni
+        postmanTimeout = setTimeout(() => {
+            if (!postman.active || dog.isDead) return;
 
-                triggerDogAction(() => {
-                    let targetX = fence.x + 100;
-                    let targetY = fence.y - dog.height + 40;
+            triggerDogAction(() => {
+                let targetX = fence.x + 100;
+                let targetY = fence.y - dog.height + 40;
 
-                    moveDogToCustom(targetX, targetY, () => {
+                moveDogToCustom(targetX, targetY, () => {
+                    if (dog.isDead) return;
+                    dog.currentImage = dogImages.bark;
+
+                    // Ugat egy darabig, majd mindketten eltűnnek / visszamennek
+                    returnTimeout = setTimeout(() => {
                         if (dog.isDead) return;
-                        dog.currentImage = dogImages.bark;
-
-                        returnTimeout = setTimeout(() => {
-                            if (dog.isDead) return;
-                            postman.active = false;
-                            animateBackToStart();
-                        }, 3000);
-                    });
+                        postman.active = false;
+                        animateBackToStart();
+                    }, 3500);
                 });
-            }, 1000);
-        }
-    }, 45000);
+            });
+        }, 2000);
+
+    }, 60000); // 60 ezer ezredmásodperc = 1 perc
 }
 
 function goToDoghouseForNight() {
@@ -430,9 +433,9 @@ function gameLoop() {
     ctx.drawImage(treeImg, treeRight.x, treeRight.y, treeRight.width, treeRight.height);
     ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
     
-    // Összefüggő kerítés sor rajzolása egymás mellé csempézve (nyújtás nélkül)
+    // Kerítés csempézés
     if (keritesImg.complete && keritesImg.naturalWidth > 0) {
-        let fenceWidth = 260; // Egy kerítéselem szélessége a képernyőn
+        let fenceWidth = 260; 
         for (let xPos = 0; xPos < canvas.width; xPos += fenceWidth) {
             ctx.drawImage(keritesImg, xPos, fence.y, fenceWidth, fence.height);
         }
@@ -441,16 +444,17 @@ function gameLoop() {
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     
+    // Postás kirajzolása (ha aktív)
+    if (postman.active && !dog.isDead && postmanImg.complete && postmanImg.naturalWidth > 0) {
+        ctx.drawImage(postmanImg, postman.x, postman.y, postman.width, postman.height);
+    }
+
     if (butterfly.active && !dog.isDead && butterflyImg.complete && butterflyImg.naturalWidth > 0) {
         ctx.drawImage(butterflyImg, butterfly.x, butterfly.y, butterfly.width, butterfly.height);
     }
 
     if (squirrel.active && !dog.isDead && squirrelImg.complete && squirrelImg.naturalWidth > 0) {
         ctx.drawImage(squirrelImg, squirrel.x, squirrel.y, squirrel.width, squirrel.height);
-    }
-
-    if (postman.active && !dog.isDead && postmanImg.complete && postmanImg.naturalWidth > 0) {
-        ctx.drawImage(postmanImg, postman.x, postman.y, postman.width, postman.height);
     }
 
     if (dog.isDead) {
