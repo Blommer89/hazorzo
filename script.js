@@ -4,7 +4,7 @@ const ctx = canvas.getContext("2d");
 canvas.width = 1080;
 canvas.height = 2340;
 
-// ANIMÁCIÓS ÉS IDŐZÍTŐ VÁLTOZÓK DEKLARÁLÁSA ELŐRE (Hogy ne legyen ReferenceError)
+// ANIMÁCIÓS ÉS IDŐZÍTŐ VÁLTOZÓK DEKLARÁLÁSA ELŐRE
 let currentAnimationId = null;
 let returnTimeout = null;
 let longPressTimer = null;
