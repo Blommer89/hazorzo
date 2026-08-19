@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Házőrző</title>
+
+    <!-- FONTOS: A manifest hivatkozás, hogy a Chrome megtalálja az ikont és a nevet -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Ikon iOS eszközökhöz (opcionális, de ajánlott) -->
+    <link rel="apple-touch-icon" href="assets/icon.png">
+
     <style>
         body {
             margin: 0;
@@ -14,7 +21,7 @@
             align-items: center;
             height: 100vh;
             overflow: hidden;
-            touch-action: none; /* Megakadályozza a véletlen nagyítást/görgetést mobilon */
+            touch-action: none;
         }
         canvas {
             display: block;
