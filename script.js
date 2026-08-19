@@ -20,7 +20,7 @@ const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
 const treeImg = new Image(); treeImg.src = "assets/tree.png";
 const keritesImg = new Image(); keritesImg.src = "assets/kerites.png"; 
-const postmanImg = new Image(); postmanImg.src = "assets/postman.png";
+const postmanImg = new Image(); postmanImg.src = "assets/postas.png"; // JAVÍTVA: postas.png
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
 const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
 const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
@@ -125,7 +125,7 @@ loadGameData();
 let butterfly = { x: 0, y: 0, width: 100, height: 100, active: false };
 let squirrel = { x: 0, y: 0, baseX: 0, baseY: 0, width: 100, height: 100, active: false };
 
-// Postás adatai (a kerítés közelében áll meg)
+// Postás adatai
 let postman = { x: 200, y: 2020, width: 220, height: 220, active: false };
 
 // Környezeti elemek
@@ -273,11 +273,9 @@ function startPostmanLoop() {
     setInterval(() => {
         if (dog.isDead || dog.isBusy || postman.active || dog.isInDoghouse) return;
 
-        // Postás megjelenik a kerítésnél
         postman.active = true;
 
         if (postmanTimeout) clearTimeout(postmanTimeout);
-        // 2 másodperc után a kutya észreveszi és oda rohan ugatni
         postmanTimeout = setTimeout(() => {
             if (!postman.active || dog.isDead) return;
 
@@ -289,7 +287,6 @@ function startPostmanLoop() {
                     if (dog.isDead) return;
                     dog.currentImage = dogImages.bark;
 
-                    // Ugat egy darabig, majd mindketten eltűnnek / visszamennek
                     returnTimeout = setTimeout(() => {
                         if (dog.isDead) return;
                         postman.active = false;
@@ -299,7 +296,7 @@ function startPostmanLoop() {
             });
         }, 2000);
 
-    }, 60000); // 60 ezer ezredmásodperc = 1 perc
+    }, 60000); 
 }
 
 function goToDoghouseForNight() {
@@ -444,7 +441,7 @@ function gameLoop() {
     ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
     ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
     
-    // Postás kirajzolása (ha aktív)
+    // Postás kirajzolása
     if (postman.active && !dog.isDead && postmanImg.complete && postmanImg.naturalWidth > 0) {
         ctx.drawImage(postmanImg, postman.x, postman.y, postman.width, postman.height);
     }
