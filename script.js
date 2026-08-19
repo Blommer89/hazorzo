@@ -4,7 +4,7 @@ const ctx = canvas.getContext("2d");
 canvas.width = 1080;
 canvas.height = 2340;
 
-// ANIMÁCIÓS ÉS IDŐZÍTŐ VÁLTOZÓK DEKLARÁLÁSA
+// ANIMÁCIÓS ÉS IDŐZÍTŐ VÁLTOZÓK
 let currentAnimationId = null;
 let returnTimeout = null;
 let longPressTimer = null;
@@ -75,7 +75,21 @@ let postman = {
 
 let keritesPattern = null;
 
-// Játékállapot betöltése a localStorage-ból
+let butterfly = { x: 0, y: 0, width: 100, height: 100, active: false };
+let squirrel = { x: 0, y: 0, baseX: 0, baseY: 0, width: 100, height: 100, active: false };
+
+const treeLeft = { x: 80, y: 200, width: 320, height: 420 };
+const treeRight = { x: 680, y: 350, width: 320, height: 420 };
+const doghouse = { x: 600, y: 950, width: 300, height: 300 };
+
+const bowls = {
+    water: { x: 590, y: 1300, width: 90, height: 90, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    food: { x: 750, y: 1350, width: 90, height: 90, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
+};
+
+const resetButton = { x: 340, y: 1550, width: 400, height: 90 };
+
+// Mentési rendszer
 function loadGameData() {
     const savedData = localStorage.getItem("tamagotchi_dog");
     const savedTime = localStorage.getItem("tamagotchi_last_save");
@@ -116,7 +130,6 @@ function loadGameData() {
             console.error("Hiba a mentett adatok betöltésekor:", e);
         }
     }
-
     updateDogAppearance();
 }
 
@@ -133,20 +146,6 @@ function saveGameData() {
 }
 
 loadGameData();
-
-let butterfly = { x: 0, y: 0, width: 100, height: 100, active: false };
-let squirrel = { x: 0, y: 0, baseX: 0, baseY: 0, width: 100, height: 100, active: false };
-
-const treeLeft = { x: 80, y: 200, width: 320, height: 420 };
-const treeRight = { x: 680, y: 350, width: 320, height: 420 };
-const doghouse = { x: 600, y: 950, width: 300, height: 300 };
-
-const bowls = {
-    water: { x: 590, y: 1300, width: 90, height: 90, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
-    food: { x: 750, y: 1350, width: 90, height: 90, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
-};
-
-const resetButton = { x: 340, y: 1550, width: 400, height: 90 };
 
 function startGame() {
     if (!gameStarted) {
@@ -198,7 +197,7 @@ setTimeout(() => {
 }, 1500);
 
 // ==================================================================================
-// POSTÁS ÉS KUTYA INTERAKCIÓ LOGIKÁJA
+// POSTÁS ÉS KUTYA INTERAKCIÓ
 // ==================================================================================
 
 function startPostmanEventLoop() {
@@ -239,7 +238,7 @@ function onPostmanArrived() {
     if (butterflyTimeout) clearTimeout(butterflyTimeout);
     if (squirrelTimeout) clearTimeout(squirrelTimeout);
     if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
-    if (tailWagInterval) clearInterval(tailWagInterval);
+    if (tailWagInterval) clearTimeout(tailWagInterval);
     if (returnTimeout) clearTimeout(returnTimeout);
     if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
     dog.isBusy = true;
@@ -279,8 +278,35 @@ function startPostmanDeparture() {
 }
 
 // ==================================================================================
-// SEGÉDLET ÉS MOZGATÁS
+// MOZGATÁS ÉS ANIMÁCIÓS SEGÉDEK
 // ==================================================================================
+
+function moveDogTo(targetX, targetY, targetImage, onArrived) {
+    if (dog.isBusy || dog.isDead) return;
+    dog.isBusy = true;
+    if (tailWagInterval) clearInterval(tailWagInterval);
+
+    let speed = 6;
+    const step = () => {
+        if (dog.isDead) return;
+        let dx = targetX - dog.x;
+        let dy = targetY - dog.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > speed) {
+            dog.x += (dx / dist) * speed;
+            dog.y += (dy / dist) * speed;
+            dog.currentImage = dogImages.walk;
+            currentAnimationId = requestAnimationFrame(step);
+        } else {
+            dog.x = targetX;
+            dog.y = targetY;
+            dog.currentImage = targetImage;
+            if (onArrived) onArrived();
+        }
+    };
+    step();
+}
 
 function moveDogToCustom(targetX, targetY, callback) {
     let speed = 6;
@@ -385,7 +411,85 @@ function startButterflyLoop() {
 }
 
 // ==================================================================================
-// FŐ RENDERELÉSI CIKLUS (GAME LOOP)
+// ÉRINTÉSI / KATTINTÁSI ESEMÉNYEK KEZELÉSE
+// ==================================================================================
+
+canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    // Ha halott, újraindítás gomb
+    if (dog.isDead) {
+        if (x >= resetButton.x && x <= resetButton.x + resetButton.width &&
+            y >= resetButton.y && y <= resetButton.y + resetButton.height) {
+            dog.health = 100;
+            dog.hunger = 10;
+            dog.thirst = 10;
+            dog.bladder = 10;
+            dog.isDead = false;
+            dog.isBusy = false;
+            dog.x = dog.startX;
+            dog.y = dog.startY;
+            updateDogAppearance();
+            saveGameData();
+        }
+        return;
+    }
+
+    if (dog.isBusy || dog.isInDoghouse || dog.isBarkingAtPostman) return;
+
+    // Víz tál kattintás
+    if (x >= bowls.water.x && x <= bowls.water.x + bowls.water.width &&
+        y >= bowls.water.y && y <= bowls.water.y + bowls.water.height) {
+        if (!bowls.water.isFull) {
+            bowls.water.isFull = true;
+        } else {
+            moveDogTo(bowls.water.x - 20, bowls.water.y, dogImages.drinking, () => {
+                returnTimeout = setTimeout(() => {
+                    dog.thirst = Math.max(0, dog.thirst - 40);
+                    bowls.water.isFull = false;
+                    animateBackToStart();
+                }, 3000);
+            });
+        }
+        return;
+    }
+
+    // Kaja tál kattintás
+    if (x >= bowls.food.x && x <= bowls.food.x + bowls.food.width &&
+        y >= bowls.food.y && y <= bowls.food.y + bowls.food.height) {
+        if (!bowls.food.isFull) {
+            bowls.food.isFull = true;
+        } else {
+            moveDogTo(bowls.food.x - 20, bowls.food.y, dogImages.eating, () => {
+                returnTimeout = setTimeout(() => {
+                    dog.hunger = Math.max(0, dog.hunger - 40);
+                    bowls.food.isFull = false;
+                    animateBackToStart();
+                }, 3000);
+            });
+        }
+        return;
+    }
+
+    // Kutya simogatás / mérgeskedés kattintás
+    if (x >= dog.x && x <= dog.x + dog.width && y >= dog.y && y <= dog.y + dog.height) {
+        dog.isBusy = true;
+        if (tailWagInterval) clearInterval(tailWagInterval);
+        dog.currentImage = dogImages.angry;
+
+        returnTimeout = setTimeout(() => {
+            dog.isBusy = false;
+            updateDogAppearance();
+        }, 2000);
+    }
+});
+
+// ==================================================================================
+// FŐ RENDERELÉSI CIKLUS
 // ==================================================================================
 
 function gameLoop() {
@@ -426,12 +530,10 @@ function gameLoop() {
     if (keritesPattern) {
         ctx.save();
         ctx.fillStyle = keritesPattern;
-        // A kerítés magasságát és pozícióját a vászon aljára igazítjuk
         let fenceHeight = 150; 
         ctx.fillRect(0, canvas.height - fenceHeight, canvas.width, fenceHeight);
         ctx.restore();
     } else if (keritesImg.complete) {
-        // Tartalék, ha a pattern még nem töltődne be
         ctx.drawImage(keritesImg, 0, canvas.height - 150, canvas.width, 150);
     }
 
@@ -455,7 +557,14 @@ function gameLoop() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "white";
         ctx.font = "bold 60px sans-serif";
-        ctx.fillText("A KUTYA ELPUSZTULT", 220, 1100);
+        ctx.fillText("A KUTYA ELPUSZTULT", 220, 1050);
+
+        // Újraindítás gomb
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(resetButton.x, resetButton.y, resetButton.width, resetButton.height);
+        ctx.fillStyle = "#000000";
+        ctx.font = "bold 40px sans-serif";
+        ctx.fillText("ÚJRAINDÍTÁS", resetButton.x + 65, resetButton.y + 60);
     }
 
     requestAnimationFrame(gameLoop);
