@@ -238,7 +238,7 @@ function onPostmanArrived() {
     if (butterflyTimeout) clearTimeout(butterflyTimeout);
     if (squirrelTimeout) clearTimeout(squirrelTimeout);
     if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
-    if (tailWagInterval) clearTimeout(tailWagInterval);
+    if (tailWagInterval) clearInterval(tailWagInterval);
     if (returnTimeout) clearTimeout(returnTimeout);
     if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
     dog.isBusy = true;
