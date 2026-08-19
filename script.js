@@ -4,6 +4,16 @@ const ctx = canvas.getContext("2d");
 canvas.width = 1080;
 canvas.height = 2340;
 
+// ANIMÁCIÓS ÉS IDŐZÍTŐ VÁLTOZÓK DEKLARÁLÁSA ELŐRE (Hogy ne legyen ReferenceError)
+let currentAnimationId = null;
+let returnTimeout = null;
+let longPressTimer = null;
+let butterflyTimeout = null;
+let squirrelTimeout = null;
+let squirrelMoveInterval = null;
+let tailWagInterval = null;
+let gameStarted = false;
+
 // Alap képek betöltése
 const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
@@ -22,9 +32,9 @@ const dogImages = {
     bark: new Image(), pee: new Image(), dead: new Image(),
     sick: new Image()
 };
-dogImages.idle.src = "assets/dog_idle.png";       // Farkcsóváló 1. fázis
-dogImages.idle2.src = "assets/dog_idle2.png";     // Farkcsóváló 2. fázis
-dogImages.sleep.src = "assets/dog_sleep.png";     // Kutyaházas / Alvó pozíció (az eredeti idle kép)
+dogImages.idle.src = "assets/dog_idle.png";       
+dogImages.idle2.src = "assets/dog_idle2.png";     
+dogImages.sleep.src = "assets/dog_sleep.png";     
 dogImages.angry.src = "assets/dog_angry.png";
 dogImages.belly.src = "assets/dog_belly.png";
 dogImages.walk.src = "assets/dog_walk.png";
@@ -45,7 +55,6 @@ let dog = {
     isDead: false,
     isInDoghouse: false, 
     
-    // Alapértelmezett statisztikák
     health: 100,
     hunger: 10,   
     thirst: 10,   
@@ -126,7 +135,6 @@ const bowls = {
 
 const resetButton = { x: 340, y: 1550, width: 400, height: 90 };
 
-let gameStarted = false;
 function startGame() {
     if (!gameStarted) {
         gameStarted = true;
@@ -170,24 +178,15 @@ function checkLoad() {
 
 imagesToLoad.forEach(img => {
     img.onload = checkLoad;
-    img.onerror = checkLoad; // Hiba esetén is továbblép, így nem lesz fekete képernyő
+    img.onerror = checkLoad; 
 });
 
-// Biztonsági háló: ha bármi miatt beakadna a betöltés, 1.5 másodperc után kényszerítjük az indítást
 setTimeout(() => {
     if (!gameStarted) {
         console.warn("Biztonsági indítás aktiválva.");
         startGame();
     }
 }, 1500);
-
-let currentAnimationId = null;
-let returnTimeout = null;
-let longPressTimer = null;
-let butterflyTimeout = null;
-let squirrelTimeout = null;
-let squirrelMoveInterval = null;
-let tailWagInterval = null;
 
 // Farkcsóváló animáció indítása
 function startTailWag() {
@@ -206,14 +205,13 @@ function updateDogAppearance() {
     if (dog.health < 100) {
         dog.currentImage = dogImages.sick.complete ? dogImages.sick : dogImages.sleep;
     } else if (dog.isInDoghouse) {
-        dog.currentImage = dogImages.sleep; // Kutyaházban az alvó/eredeti kép látszik
+        dog.currentImage = dogImages.sleep; 
     } else {
         dog.currentImage = dogImages.idle;
         startTailWag(); 
     }
 }
 
-// Ellenőrzi, hogy éjszaka van-e (22:00 - 06:00)
 function checkNightTimeLoop() {
     setInterval(() => {
         if (dog.isDead || dog.isBusy) return;
@@ -247,7 +245,7 @@ function goToDoghouseForNight() {
         if (dog.isDead) return;
         dog.isInDoghouse = true;
         dog.isBusy = false;
-        dog.currentImage = dogImages.sleep; // Kutyaházas pozíció (alvó kép)
+        dog.currentImage = dogImages.sleep; 
     });
 }
 
@@ -264,7 +262,6 @@ function returnFromDoghouse() {
     });
 }
 
-// Tamagocsi időzítő
 function startStatsLoop() {
     setInterval(() => {
         if (dog.isDead) return;
@@ -454,10 +451,6 @@ function getCanvasCoords(e) {
     return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
 }
 
-// ==================================================================================
-// ÉRINTÉSEK ÉS KATTINTÁSOK KEZELÉSE
-// ==================================================================================
-
 canvas.addEventListener("pointerdown", (e) => {
     requestFullscreenOnce(); 
 
@@ -521,7 +514,6 @@ canvas.addEventListener("pointerup", (e) => {
     const moveY = coords.y;
     const padding = 60;
 
-    // KUTYAHÁZ BÖKÉS (Odasétál és felveszi a dog_sleep pozíciót 5 másodpercre)
     if (moveX >= doghouse.x && moveX <= doghouse.x + doghouse.width && moveY >= doghouse.y && moveY <= doghouse.y + doghouse.height) {
         if (dog.isBusy || dog.isInDoghouse) return;
         
@@ -537,7 +529,7 @@ canvas.addEventListener("pointerup", (e) => {
 
             moveDogToCustom(targetX, targetY, () => {
                 if (dog.isDead) return;
-                dog.currentImage = dogImages.sleep; // Kutyaházas / alvó kép
+                dog.currentImage = dogImages.sleep; 
                 
                 returnTimeout = setTimeout(() => {
                     if (dog.isDead) return;
@@ -548,7 +540,6 @@ canvas.addEventListener("pointerup", (e) => {
         return;
     }
 
-    // Pillangóra bökés
     if (butterfly.active && moveX >= butterfly.x - 40 && moveX <= butterfly.x + butterfly.width + 40 &&
         moveY >= butterfly.y - 40 && moveY <= butterfly.y + butterfly.height + 40) {
         
@@ -570,7 +561,6 @@ canvas.addEventListener("pointerup", (e) => {
         return;
     }
 
-    // Kutyára bökés
     if (moveX >= dog.x - padding && moveX <= dog.x + dog.width + padding && 
         moveY >= dog.y - padding && moveY <= dog.y + dog.height + padding) {
         
@@ -594,7 +584,6 @@ canvas.addEventListener("pointerup", (e) => {
         return;
     }
 
-    // BAL FA (Pisilés)
     if (moveX >= treeLeft.x && moveX <= treeLeft.x + treeLeft.width && moveY >= treeLeft.y && moveY <= treeLeft.y + treeLeft.height) {
         triggerDogAction(() => {
             butterfly.active = false;
@@ -615,7 +604,6 @@ canvas.addEventListener("pointerup", (e) => {
         return;
     }
 
-    // JOBB FA (Pisilés)
     if (moveX >= treeRight.x && moveX <= treeRight.x + treeRight.width && moveY >= treeRight.y && moveY <= treeRight.y + treeRight.height) {
         triggerDogAction(() => {
             butterfly.active = false;
@@ -636,7 +624,6 @@ canvas.addEventListener("pointerup", (e) => {
         return;
     }
 
-    // TÁLAK (Etetés / Itatás)
     let clickedBowl = false;
     Object.values(bowls).forEach(bowl => {
         if (moveX >= bowl.x && moveX <= bowl.x + bowl.width && moveY >= bowl.y && moveY <= bowl.y + bowl.height) {
@@ -674,7 +661,6 @@ canvas.addEventListener("pointerup", (e) => {
 
     if (clickedBowl) return;
     
-    // Mókus megjelenítése, véletlenszerű ugrándozás
     triggerDogAction(() => {
         butterfly.active = false;
         if (butterflyTimeout) clearTimeout(butterflyTimeout);
@@ -724,10 +710,6 @@ function triggerDogAction(actionCallback) {
     dog.isBusy = false;
     actionCallback();
 }
-
-// ==================================================================================
-// MOZGATÓ FÜGGVÉNYEK
-// ==================================================================================
 
 function moveDogToExplicit(targetX, targetY, img, onComplete) {
     if (dog.isDead) return;
@@ -784,7 +766,7 @@ function animateBackToStart() {
             dog.y = dog.startY;
             dog.isBusy = false; 
             currentAnimationId = null;
-            updateDogAppearance(); // Visszaállítva a farkcsóváló alaphelyzetre
+            updateDogAppearance(); 
             saveGameData();
         }
     };
