@@ -12,6 +12,7 @@ let butterflyTimeout = null;
 let squirrelTimeout = null;
 let squirrelMoveInterval = null;
 let tailWagInterval = null;
+let peeInterval = null;
 let postmanEventInterval = null;
 let gameStarted = false;
 
@@ -48,7 +49,7 @@ dogImages.pee.src = "assets/dog_pee.png";
 dogImages.dead.src = "assets/dog_dead.png";
 dogImages.sick.src = "assets/dog_sick.png";
 
-// Kutya adatai (visszaállítva az eredeti, stabil pozíciókra)
+// Kutya adatai (eredeti, pontos pozíciók)
 let dog = { 
     x: 415, y: 1650, 
     startX: 415, startY: 1650, 
@@ -57,6 +58,7 @@ let dog = {
     isBusy: false,
     isDead: false,
     isInDoghouse: false, 
+    isPeeing: false,
     isBarkingAtPostman: false,
     
     health: 100,
@@ -70,7 +72,7 @@ let postman = {
     x: -150, y: 1830,
     width: 150, height: 200,
     active: false,
-    speed: 12 // Kicsit gyorsabb, dinamikusabb mozgás
+    speed: 12
 };
 
 let keritesPattern = null;
@@ -162,6 +164,7 @@ function startGame() {
         startStatsLoop(); 
         startButterflyLoop(); 
         checkNightTimeLoop(); 
+        startPeeLoop();
         startPostmanEventLoop();
     }
 }
@@ -197,14 +200,14 @@ setTimeout(() => {
 }, 1500);
 
 // ==================================================================================
-// POSTÁS ÉS KUTYA INTERAKCIÓ (2 percenként)
+// POSTÁS ESEMÉNY (2 percenként)
 // ==================================================================================
 
 function startPostmanEventLoop() {
     if (postmanEventInterval) clearInterval(postmanEventInterval);
     
     postmanEventInterval = setInterval(() => {
-        if (dog.isDead || dog.isBusy || dog.isInDoghouse || postman.active) return;
+        if (dog.isDead || dog.isBusy || dog.isInDoghouse || dog.isPeeing || postman.active) return;
         
         postman.x = -postman.width;
         postman.active = true;
@@ -243,14 +246,13 @@ function onPostmanArrived() {
     if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
     dog.isBusy = true;
 
-    // A kutya a postás mellé szalad a kerítéshez
     let targetDogX = postman.x + postman.width + 10; 
-    let targetDogY = 1650; // Visszaállítva a helyes magasságra
+    let targetDogY = 1650;
 
     moveDogToCustom(targetDogX, targetDogY, () => {
         if (dog.isDead) return;
         dog.isBarkingAtPostman = true;
-        dog.currentImage = dogImages.bark; // Ugatás kép
+        dog.currentImage = dogImages.bark;
         
         returnTimeout = setTimeout(() => {
             if (dog.isDead) return;
@@ -259,7 +261,7 @@ function onPostmanArrived() {
             
             animateBackToStart();
             startPostmanDeparture();
-        }, 4000); // 4 másodperc ugatás
+        }, 4000);
     });
 }
 
@@ -279,7 +281,62 @@ function startPostmanDeparture() {
 }
 
 // ==================================================================================
-// GYORS MOZGATÁSI SEGÉDEK (Eredeti tempó)
+// PISILÉS ÉS ÉJSZAKAI ALVÁS LOGIKA
+// ==================================================================================
+
+function startPeeLoop() {
+    if (peeInterval) clearInterval(peeInterval);
+    peeInterval = setInterval(() => {
+        if (dog.isDead || dog.isBusy || dog.isInDoghouse || dog.isPeeing || dog.isBarkingAtPostman || postman.active) return;
+
+        if (dog.bladder >= 70) {
+            triggerPeeBehavior();
+        }
+    }, 15000);
+}
+
+function triggerPeeBehavior() {
+    dog.isBusy = true;
+    dog.isPeeing = true;
+    if (tailWagInterval) clearInterval(tailWagInterval);
+
+    let treeTargetX = treeLeft.x + 100;
+    let treeTargetY = treeLeft.y + 280;
+
+    moveDogToCustom(treeTargetX, treeTargetY, () => {
+        if (dog.isDead) return;
+        dog.currentImage = dogImages.pee;
+
+        returnTimeout = setTimeout(() => {
+            if (dog.isDead) return;
+            dog.bladder = 0;
+            dog.isPeeing = false;
+            animateBackToStart();
+        }, 4000);
+    });
+}
+
+function checkNightTimeLoop() {
+    setInterval(() => {
+        if (dog.isDead || dog.isBusy || dog.isPeeing || dog.isBarkingAtPostman) return;
+        const currentHour = new Date().getHours();
+        const isNight = currentHour >= 22 || currentHour < 6;
+        if (isNight && !dog.isInDoghouse) {
+            dog.isInDoghouse = true;
+            dog.x = doghouse.x + 25;
+            dog.y = doghouse.y + 25;
+            updateDogAppearance();
+        } else if (!isNight && dog.isInDoghouse) {
+            dog.isInDoghouse = false;
+            dog.x = dog.startX;
+            dog.y = dog.startY;
+            updateDogAppearance();
+        }
+    }, 60000);
+}
+
+// ==================================================================================
+// MOZGATÁSI ÉS ANIMÁCIÓS SEGÉDEK (Eredeti, gyors sebesség)
 // ==================================================================================
 
 function moveDogTo(targetX, targetY, targetImage, onArrived) {
@@ -287,7 +344,7 @@ function moveDogTo(targetX, targetY, targetImage, onArrived) {
     dog.isBusy = true;
     if (tailWagInterval) clearInterval(tailWagInterval);
 
-    let speed = 15; // Gyors, dinamikus mozgás (nem lassú)
+    let speed = 15; 
     const step = () => {
         if (dog.isDead) return;
         let dx = targetX - dog.x;
@@ -310,7 +367,7 @@ function moveDogTo(targetX, targetY, targetImage, onArrived) {
 }
 
 function moveDogToCustom(targetX, targetY, callback) {
-    let speed = 15; // Gyors, dinamikus mozgás
+    let speed = 15; 
     const step = () => {
         if (dog.isDead) return;
         let dx = targetX - dog.x;
@@ -342,7 +399,7 @@ function startTailWag() {
     if (tailWagInterval) clearInterval(tailWagInterval);
     let toggle = false;
     tailWagInterval = setInterval(() => {
-        if (dog.isDead || dog.isBusy || dog.health < 100 || dog.isInDoghouse || dog.isBarkingAtPostman) return;
+        if (dog.isDead || dog.isBusy || dog.health < 100 || dog.isInDoghouse || dog.isPeeing || dog.isBarkingAtPostman) return;
         toggle = !toggle;
         dog.currentImage = toggle ? dogImages.idle2 : dogImages.idle;
     }, 350); 
@@ -351,7 +408,9 @@ function startTailWag() {
 function updateDogAppearance() {
     if (tailWagInterval) clearInterval(tailWagInterval);
 
-    if (dog.isBarkingAtPostman) {
+    if (dog.isPeeing) {
+        dog.currentImage = dogImages.pee;
+    } else if (dog.isBarkingAtPostman) {
         dog.currentImage = dogImages.bark;
     } else if (dog.health < 100) {
         dog.currentImage = dogImages.sick.complete ? dogImages.sick : dogImages.sleep;
@@ -361,25 +420,6 @@ function updateDogAppearance() {
         dog.currentImage = dogImages.idle;
         startTailWag(); 
     }
-}
-
-function checkNightTimeLoop() {
-    setInterval(() => {
-        if (dog.isDead || dog.isBusy || dog.isBarkingAtPostman) return;
-        const currentHour = new Date().getHours();
-        const isNight = currentHour >= 22 || currentHour < 6;
-        if (isNight && !dog.isInDoghouse) {
-            dog.isInDoghouse = true;
-            dog.x = doghouse.x + 25;
-            dog.y = doghouse.y + 25;
-            updateDogAppearance();
-        } else if (!isNight && dog.isInDoghouse) {
-            dog.isInDoghouse = false;
-            dog.x = dog.startX;
-            dog.y = dog.startY;
-            updateDogAppearance();
-        }
-    }, 60000);
 }
 
 function startStatsLoop() {
@@ -408,11 +448,11 @@ function startStatsLoop() {
 }
 
 function startButterflyLoop() {
-    // Alap pillangó hurok
+    // Pillangó hurok helye
 }
 
 // ==================================================================================
-// ÉRINTÉSI / KATTINTÁSI ESEMÉNYEK KEZELÉSE
+// KATTINTÁSI ESEMÉNYEK KEZELÉSE
 // ==================================================================================
 
 canvas.addEventListener("click", (e) => {
@@ -439,15 +479,15 @@ canvas.addEventListener("click", (e) => {
         return;
     }
 
-    if (dog.isBusy || dog.isInDoghouse || dog.isBarkingAtPostman) return;
+    if (dog.isBusy || dog.isInDoghouse || dog.isPeeing || dog.isBarkingAtPostman) return;
 
-    // Víz tál kattintás
+    // Víz tál kattintás (tál feltöltése vagy ivás)
     if (x >= bowls.water.x && x <= bowls.water.x + bowls.water.width &&
         y >= bowls.water.y && y <= bowls.water.y + bowls.water.height) {
         if (!bowls.water.isFull) {
             bowls.water.isFull = true;
         } else {
-            moveDogTo(bowls.water.x - 20, bowls.water.y, dogImages.drinking, () => {
+            moveDogTo(bowls.water.x - 60, bowls.water.y + 10, dogImages.drinking, () => {
                 returnTimeout = setTimeout(() => {
                     dog.thirst = Math.max(0, dog.thirst - 40);
                     bowls.water.isFull = false;
@@ -458,13 +498,13 @@ canvas.addEventListener("click", (e) => {
         return;
     }
 
-    // Kaja tál kattintás
+    // Kaja tál kattintás (tál feltöltése vagy evés)
     if (x >= bowls.food.x && x <= bowls.food.x + bowls.food.width &&
         y >= bowls.food.y && y <= bowls.food.y + bowls.food.height) {
         if (!bowls.food.isFull) {
             bowls.food.isFull = true;
         } else {
-            moveDogTo(bowls.food.x - 20, bowls.food.y, dogImages.eating, () => {
+            moveDogTo(bowls.food.x - 60, bowls.food.y + 10, dogImages.eating, () => {
                 returnTimeout = setTimeout(() => {
                     dog.hunger = Math.max(0, dog.hunger - 40);
                     bowls.food.isFull = false;
@@ -475,7 +515,7 @@ canvas.addEventListener("click", (e) => {
         return;
     }
 
-    // Kutya simogatás
+    // Kutya simogatás / mérgeskedés
     if (x >= dog.x && x <= dog.x + dog.width && y >= dog.y && y <= dog.y + dog.height) {
         dog.isBusy = true;
         if (tailWagInterval) clearInterval(tailWagInterval);
@@ -526,7 +566,7 @@ function gameLoop() {
         ctx.drawImage(postasImg, postman.x, postman.y, postman.width, postman.height);
     }
 
-    // 6. Kerítés a kert alján (összefüggő ismétlődéssel)
+    // 6. Kerítés a kert alján
     if (keritesPattern) {
         ctx.save();
         ctx.fillStyle = keritesPattern;
@@ -559,6 +599,7 @@ function gameLoop() {
         ctx.font = "bold 60px sans-serif";
         ctx.fillText("A KUTYA ELPUSZTULT", 220, 1050);
 
+        // Újraindítás / frissítés gomb
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(resetButton.x, resetButton.y, resetButton.width, resetButton.height);
         ctx.fillStyle = "#000000";
