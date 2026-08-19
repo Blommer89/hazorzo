@@ -12,33 +12,32 @@ let butterflyTimeout = null;
 let squirrelTimeout = null;
 let squirrelMoveInterval = null;
 let tailWagInterval = null;
-let peeInterval = null;
-let postmanEventInterval = null;
+let postmanTimeout = null;
 let gameStarted = false;
 
 // Alap képek betöltése
 const yardImg = new Image(); yardImg.src = "assets/yard.png";
 const doghouseImg = new Image(); doghouseImg.src = "assets/doghouse.png";
 const treeImg = new Image(); treeImg.src = "assets/tree.png";
+const fenceImg = new Image(); fenceImg.src = "assets/fence.png"; // Kerítés kép
+const postmanImg = new Image(); postmanImg.src = "assets/postman.png"; // Postás kép
 const bowlWaterImg = new Image(); bowlWaterImg.src = "assets/tál_víz.png";
 const bowlWaterEmptyImg = new Image(); bowlWaterEmptyImg.src = "assets/tál_víz_üres.png";
 const bowlFoodImg = new Image(); bowlFoodImg.src = "assets/tál_kaja.png";
-const bowlFoodEmptyImg = new Image(); bowlFoodEmptyImg.src = "assets/tál_kaja_üres.png";
+const bowlFoodEmptyImg = new Image(); bowlFoodImg.src = "assets/tál_kaja_üres.png";
 const butterflyImg = new Image(); butterflyImg.src = "assets/butterfly.png"; 
 const squirrelImg = new Image(); squirrelImg.src = "assets/squirrel.png"; 
-const keritesImg = new Image(); keritesImg.src = "assets/kerites.png";
-const postasImg = new Image(); postasImg.src = "assets/postas.png";
 
-// Kutya állapotok képeinek betöltése
+// Kutya állapotok képei
 const dogImages = {
     idle: new Image(), idle2: new Image(), sleep: new Image(), angry: new Image(), belly: new Image(),
     walk: new Image(), eating: new Image(), drinking: new Image(),
     bark: new Image(), pee: new Image(), dead: new Image(),
     sick: new Image()
 };
-dogImages.idle.src = "assets/dog_idle.png";       
-dogImages.idle2.src = "assets/dog_idle2.png";     
-dogImages.sleep.src = "assets/dog_sleep.png";     
+dogImages.idle.src = "assets/dog_idle.png";        
+dogImages.idle2.src = "assets/dog_idle2.png";      
+dogImages.sleep.src = "assets/dog_sleep.png";      
 dogImages.angry.src = "assets/dog_angry.png";
 dogImages.belly.src = "assets/dog_belly.png";
 dogImages.walk.src = "assets/dog_walk.png";
@@ -49,7 +48,7 @@ dogImages.pee.src = "assets/dog_pee.png";
 dogImages.dead.src = "assets/dog_dead.png";
 dogImages.sick.src = "assets/dog_sick.png";
 
-// Kutya adatai (eredeti, pontos pozíciók)
+// Kutya adatai
 let dog = { 
     x: 415, y: 1650, 
     startX: 415, startY: 1650, 
@@ -58,8 +57,6 @@ let dog = {
     isBusy: false,
     isDead: false,
     isInDoghouse: false, 
-    isPeeing: false,
-    isBarkingAtPostman: false,
     
     health: 100,
     hunger: 10,   
@@ -67,31 +64,7 @@ let dog = {
     bladder: 10   
 };
 
-// Postás adatai
-let postman = {
-    x: -150, y: 1830,
-    width: 150, height: 200,
-    active: false,
-    speed: 12
-};
-
-let keritesPattern = null;
-
-let butterfly = { x: 0, y: 0, width: 100, height: 100, active: false };
-let squirrel = { x: 0, y: 0, baseX: 0, baseY: 0, width: 100, height: 100, active: false };
-
-const treeLeft = { x: 80, y: 200, width: 320, height: 420 };
-const treeRight = { x: 680, y: 350, width: 320, height: 420 };
-const doghouse = { x: 600, y: 950, width: 300, height: 300 };
-
-const bowls = {
-    water: { x: 590, y: 1300, width: 90, height: 90, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
-    food: { x: 750, y: 1350, width: 90, height: 90, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
-};
-
-const resetButton = { x: 340, y: 1550, width: 400, height: 90 };
-
-// Mentési rendszer
+// Játékállapot betöltése a localStorage-ból
 function loadGameData() {
     const savedData = localStorage.getItem("tamagotchi_dog");
     const savedTime = localStorage.getItem("tamagotchi_last_save");
@@ -129,7 +102,7 @@ function loadGameData() {
                 }
             }
         } catch (e) {
-            console.error("Hiba a mentett adatok betöltésekor:", e);
+            console.error("Hiba a mentés betöltésekor:", e);
         }
     }
     updateDogAppearance();
@@ -149,31 +122,51 @@ function saveGameData() {
 
 loadGameData();
 
+let butterfly = { x: 0, y: 0, width: 100, height: 100, active: false };
+let squirrel = { x: 0, y: 0, baseX: 0, baseY: 0, width: 100, height: 100, active: false };
+let postman = { x: 150, y: 2100, width: 150, height: 150, active: false };
+
+// Környezeti elemek
+const treeLeft = { x: 80, y: 200, width: 320, height: 420 };
+const treeRight = { x: 680, y: 350, width: 320, height: 420 };
+const doghouse = { x: 600, y: 950, width: 300, height: 300 };
+const fence = { x: 50, y: 2150, width: 980, height: 120 }; // Kerítés a kert alján
+
+const bowls = {
+    water: { x: 590, y: 1300, width: 90, height: 90, img: bowlWaterEmptyImg, fullImg: bowlWaterImg, emptyImg: bowlWaterEmptyImg, isFull: false },
+    food: { x: 750, y: 1350, width: 90, height: 90, img: bowlFoodEmptyImg, fullImg: bowlFoodImg, emptyImg: bowlFoodEmptyImg, isFull: false }
+};
+
+const resetButton = { x: 340, y: 1550, width: 400, height: 90 };
+
 function startGame() {
     if (!gameStarted) {
         gameStarted = true;
-        if (keritesImg.complete) {
-            keritesPattern = ctx.createPattern(keritesImg, 'repeat-x');
-        } else {
-            keritesImg.onload = () => {
-                keritesPattern = ctx.createPattern(keritesImg, 'repeat-x');
-            };
-        }
-
         gameLoop();
         startStatsLoop(); 
         startButterflyLoop(); 
+        startPostmanLoop(); // Postás ciklus indítása
         checkNightTimeLoop(); 
-        startPeeLoop();
-        startPostmanEventLoop();
+        startPeeLoop(); 
+    }
+}
+
+function requestFullscreenOnce() {
+    let elem = document.documentElement;
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(() => {});
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        }
     }
 }
 
 let imagesLoaded = 0;
 const imagesToLoad = [
-    yardImg, doghouseImg, treeImg, 
+    yardImg, doghouseImg, treeImg, fenceImg, postmanImg,
     bowlWaterImg, bowlWaterEmptyImg, bowlFoodImg, bowlFoodEmptyImg,
-    butterflyImg, squirrelImg, keritesImg, postasImg,
+    butterflyImg, squirrelImg,
     dogImages.idle, dogImages.idle2, dogImages.sleep, dogImages.angry, 
     dogImages.belly, dogImages.walk, dogImages.eating, dogImages.drinking,
     dogImages.bark, dogImages.pee, dogImages.dead, dogImages.sick
@@ -199,207 +192,11 @@ setTimeout(() => {
     }
 }, 1500);
 
-// ==================================================================================
-// POSTÁS ESEMÉNY (2 percenként)
-// ==================================================================================
-
-function startPostmanEventLoop() {
-    if (postmanEventInterval) clearInterval(postmanEventInterval);
-    
-    postmanEventInterval = setInterval(() => {
-        if (dog.isDead || dog.isBusy || dog.isInDoghouse || dog.isPeeing || postman.active) return;
-        
-        postman.x = -postman.width;
-        postman.active = true;
-        animatePostmanArrival();
-        
-    }, 120000); 
-}
-
-function animatePostmanArrival() {
-    let targetX = canvas.width / 2 - postman.width / 2;
-    
-    const movePostman = () => {
-        if (!postman.active || dog.isDead) return;
-        
-        if (postman.x < targetX) {
-            postman.x += postman.speed;
-            requestAnimationFrame(movePostman);
-        } else {
-            onPostmanArrived();
-        }
-    };
-    movePostman();
-}
-
-function onPostmanArrived() {
-    if (dog.isDead || dog.isInDoghouse) {
-        startPostmanDeparture();
-        return;
-    }
-
-    if (butterflyTimeout) clearTimeout(butterflyTimeout);
-    if (squirrelTimeout) clearTimeout(squirrelTimeout);
-    if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
-    if (tailWagInterval) clearInterval(tailWagInterval);
-    if (returnTimeout) clearTimeout(returnTimeout);
-    if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
-    dog.isBusy = true;
-
-    let targetDogX = postman.x + postman.width + 10; 
-    let targetDogY = 1650;
-
-    moveDogToCustom(targetDogX, targetDogY, () => {
-        if (dog.isDead) return;
-        dog.isBarkingAtPostman = true;
-        dog.currentImage = dogImages.bark;
-        
-        returnTimeout = setTimeout(() => {
-            if (dog.isDead) return;
-            dog.isBarkingAtPostman = false;
-            dog.currentImage = dogImages.idle;
-            
-            animateBackToStart();
-            startPostmanDeparture();
-        }, 4000);
-    });
-}
-
-function startPostmanDeparture() {
-    const movePostmanOut = () => {
-        if (!postman.active || dog.isDead) return;
-        
-        if (postman.x < canvas.width) {
-            postman.x += postman.speed;
-            requestAnimationFrame(movePostmanOut);
-        } else {
-            postman.active = false;
-            postman.x = -postman.width;
-        }
-    };
-    movePostmanOut();
-}
-
-// ==================================================================================
-// PISILÉS ÉS ÉJSZAKAI ALVÁS LOGIKA
-// ==================================================================================
-
-function startPeeLoop() {
-    if (peeInterval) clearInterval(peeInterval);
-    peeInterval = setInterval(() => {
-        if (dog.isDead || dog.isBusy || dog.isInDoghouse || dog.isPeeing || dog.isBarkingAtPostman || postman.active) return;
-
-        if (dog.bladder >= 70) {
-            triggerPeeBehavior();
-        }
-    }, 15000);
-}
-
-function triggerPeeBehavior() {
-    dog.isBusy = true;
-    dog.isPeeing = true;
-    if (tailWagInterval) clearInterval(tailWagInterval);
-
-    let treeTargetX = treeLeft.x + 100;
-    let treeTargetY = treeLeft.y + 280;
-
-    moveDogToCustom(treeTargetX, treeTargetY, () => {
-        if (dog.isDead) return;
-        dog.currentImage = dogImages.pee;
-
-        returnTimeout = setTimeout(() => {
-            if (dog.isDead) return;
-            dog.bladder = 0;
-            dog.isPeeing = false;
-            animateBackToStart();
-        }, 4000);
-    });
-}
-
-function checkNightTimeLoop() {
-    setInterval(() => {
-        if (dog.isDead || dog.isBusy || dog.isPeeing || dog.isBarkingAtPostman) return;
-        const currentHour = new Date().getHours();
-        const isNight = currentHour >= 22 || currentHour < 6;
-        if (isNight && !dog.isInDoghouse) {
-            dog.isInDoghouse = true;
-            dog.x = doghouse.x + 25;
-            dog.y = doghouse.y + 25;
-            updateDogAppearance();
-        } else if (!isNight && dog.isInDoghouse) {
-            dog.isInDoghouse = false;
-            dog.x = dog.startX;
-            dog.y = dog.startY;
-            updateDogAppearance();
-        }
-    }, 60000);
-}
-
-// ==================================================================================
-// MOZGATÁSI ÉS ANIMÁCIÓS SEGÉDEK (Eredeti, gyors sebesség)
-// ==================================================================================
-
-function moveDogTo(targetX, targetY, targetImage, onArrived) {
-    if (dog.isBusy || dog.isDead) return;
-    dog.isBusy = true;
-    if (tailWagInterval) clearInterval(tailWagInterval);
-
-    let speed = 15; 
-    const step = () => {
-        if (dog.isDead) return;
-        let dx = targetX - dog.x;
-        let dy = targetY - dog.y;
-        let dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > speed) {
-            dog.x += (dx / dist) * speed;
-            dog.y += (dy / dist) * speed;
-            dog.currentImage = dogImages.walk;
-            currentAnimationId = requestAnimationFrame(step);
-        } else {
-            dog.x = targetX;
-            dog.y = targetY;
-            dog.currentImage = targetImage;
-            if (onArrived) onArrived();
-        }
-    };
-    step();
-}
-
-function moveDogToCustom(targetX, targetY, callback) {
-    let speed = 15; 
-    const step = () => {
-        if (dog.isDead) return;
-        let dx = targetX - dog.x;
-        let dy = targetY - dog.y;
-        let dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > speed) {
-            dog.x += (dx / dist) * speed;
-            dog.y += (dy / dist) * speed;
-            dog.currentImage = dogImages.walk;
-            currentAnimationId = requestAnimationFrame(step);
-        } else {
-            dog.x = targetX;
-            dog.y = targetY;
-            if (callback) callback();
-        }
-    };
-    step();
-}
-
-function animateBackToStart() {
-    moveDogToCustom(dog.startX, dog.startY, () => {
-        dog.isBusy = false;
-        updateDogAppearance();
-    });
-}
-
 function startTailWag() {
     if (tailWagInterval) clearInterval(tailWagInterval);
     let toggle = false;
     tailWagInterval = setInterval(() => {
-        if (dog.isDead || dog.isBusy || dog.health < 100 || dog.isInDoghouse || dog.isPeeing || dog.isBarkingAtPostman) return;
+        if (dog.isDead || dog.isBusy || dog.health < 100 || dog.isInDoghouse) return;
         toggle = !toggle;
         dog.currentImage = toggle ? dogImages.idle2 : dogImages.idle;
     }, 350); 
@@ -408,11 +205,7 @@ function startTailWag() {
 function updateDogAppearance() {
     if (tailWagInterval) clearInterval(tailWagInterval);
 
-    if (dog.isPeeing) {
-        dog.currentImage = dogImages.pee;
-    } else if (dog.isBarkingAtPostman) {
-        dog.currentImage = dogImages.bark;
-    } else if (dog.health < 100) {
+    if (dog.health < 100) {
         dog.currentImage = dogImages.sick.complete ? dogImages.sick : dogImages.sleep;
     } else if (dog.isInDoghouse) {
         dog.currentImage = dogImages.sleep; 
@@ -422,25 +215,148 @@ function updateDogAppearance() {
     }
 }
 
+function checkNightTimeLoop() {
+    setInterval(() => {
+        if (dog.isDead || dog.isBusy) return;
+
+        const currentHour = new Date().getHours();
+        const isNight = currentHour >= 22 || currentHour < 6;
+
+        if (isNight && !dog.isInDoghouse) {
+            goToDoghouseForNight();
+        } else if (!isNight && dog.isInDoghouse && !dog.isBusy) {
+            returnFromDoghouse();
+        }
+    }, 30000); 
+}
+
+let peeInterval = null;
+function startPeeLoop() {
+    if (peeInterval) clearInterval(peeInterval);
+    peeInterval = setInterval(() => {
+        if (dog.isDead || dog.isBusy || dog.isInDoghouse) return;
+        if (dog.bladder >= 75) {
+            triggerPeeBehavior();
+        }
+    }, 15000);
+}
+
+function triggerPeeBehavior() {
+    dog.isBusy = true;
+    butterfly.active = false;
+    squirrel.active = false;
+    postman.active = false;
+    if (tailWagInterval) clearInterval(tailWagInterval);
+
+    let targetX = treeLeft.x + (treeLeft.width / 2) - (dog.width / 2) - 60;
+    let targetY = treeLeft.y + treeLeft.height - 230; 
+
+    moveDogToCustom(targetX, targetY, () => {
+        if (dog.isDead) return;
+        dog.currentImage = dogImages.pee;
+        dog.bladder = 0; 
+        saveGameData();
+
+        returnTimeout = setTimeout(() => {
+            if (dog.isDead) return;
+            animateBackToStart();
+        }, 3000);
+    });
+}
+
+// Postás logika: Időnként megjelenik a kerítésnél, a kutya odamegy és megugatja
+function startPostmanLoop() {
+    setInterval(() => {
+        if (dog.isDead || dog.isBusy || postman.active || dog.isInDoghouse) return;
+
+        if (Math.random() < 0.35) {
+            postman.active = true;
+
+            if (postmanTimeout) clearTimeout(postmanTimeout);
+            postmanTimeout = setTimeout(() => {
+                if (!postman.active || dog.isDead || dog.isBusy) return;
+
+                triggerDogAction(() => {
+                    let targetX = fence.x + 100;
+                    let targetY = fence.y - dog.height + 40;
+
+                    moveDogToCustom(targetX, targetY, () => {
+                        if (dog.isDead) return;
+                        dog.currentImage = dogImages.bark;
+
+                        returnTimeout = setTimeout(() => {
+                            if (dog.isDead) return;
+                            postman.active = false;
+                            animateBackToStart();
+                        }, 3000);
+                    });
+                });
+            }, 1000);
+        }
+    }, 45000);
+}
+
+function goToDoghouseForNight() {
+    dog.isBusy = true;
+    butterfly.active = false;
+    squirrel.active = false;
+    postman.active = false;
+    if (tailWagInterval) clearInterval(tailWagInterval);
+
+    let targetX = doghouse.x + (doghouse.width / 2) - (dog.width / 2);
+    let targetY = doghouse.y + doghouse.height - dog.height + 20;
+
+    moveDogToCustom(targetX, targetY, () => {
+        if (dog.isDead) return;
+        dog.isInDoghouse = true;
+        dog.isBusy = false;
+        dog.currentImage = dogImages.sleep; 
+    });
+}
+
+function returnFromDoghouse() {
+    dog.isBusy = true;
+    let targetX = dog.startX;
+    let targetY = dog.startY;
+
+    moveDogToCustom(targetX, targetY, () => {
+        if (dog.isDead) return;
+        dog.isInDoghouse = false;
+        dog.isBusy = false;
+        updateDogAppearance();
+    });
+}
+
 function startStatsLoop() {
     setInterval(() => {
         if (dog.isDead) return;
 
-        dog.hunger = Math.min(100, dog.hunger + 0.1);
-        dog.thirst = Math.min(100, dog.thirst + 0.15);
-        dog.bladder = Math.min(100, dog.bladder + 0.08);
+        dog.hunger += 0.3;   
+        dog.thirst += 0.4;   
+        dog.bladder += 0.2;  
+
+        dog.hunger = Math.min(100, Math.max(0, dog.hunger));
+        dog.thirst = Math.min(100, Math.max(0, dog.thirst));
+        dog.bladder = Math.min(100, Math.max(0, dog.bladder));
 
         if (dog.hunger > 85 || dog.thirst > 85 || dog.bladder > 90) {
-            dog.health = Math.max(0, dog.health - 0.5);
+            dog.health -= 1.5;
         } else if (dog.hunger < 50 && dog.thirst < 50 && dog.bladder < 50) {
-            dog.health = Math.min(100, dog.health + 0.2);
+            dog.health = Math.min(100, dog.health + 0.5);
         }
 
         if (dog.health <= 0) {
             dog.health = 0;
             dog.isDead = true;
-            dog.currentImage = dogImages.dead;
-            dog.isBusy = true;
+            butterfly.active = false; 
+            squirrel.active = false;
+            postman.active = false;
+            if (tailWagInterval) clearInterval(tailWagInterval);
+            if (returnTimeout) clearTimeout(returnTimeout);
+            if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+            if (peeInterval) clearInterval(peeInterval);
+            
+            dog.currentImage = dogImages.dead.complete ? dogImages.dead : dogImages.angry;
         }
 
         saveGameData();
@@ -448,164 +364,463 @@ function startStatsLoop() {
 }
 
 function startButterflyLoop() {
-    // Pillangó hurok helye
+    setInterval(() => {
+        if (dog.isDead || dog.isBusy || butterfly.active || dog.isInDoghouse) return;
+
+        if (Math.random() < 0.45) {
+            butterfly.x = Math.random() * (canvas.width - 300) + 150;
+            butterfly.y = Math.random() * 800 + 1200;
+            butterfly.active = true;
+
+            if (butterflyTimeout) clearTimeout(butterflyTimeout);
+            butterflyTimeout = setTimeout(() => {
+                if (!butterfly.active || dog.isDead || dog.isBusy) return;
+
+                triggerDogAction(() => {
+                    let targetX = butterfly.x - dog.width / 2 + 20;
+                    let targetY = butterfly.y - dog.height / 2 + 20;
+
+                    moveDogToCustom(targetX, targetY, () => {
+                        if (dog.isDead) return;
+                        dog.currentImage = dogImages.bark;
+                        returnTimeout = setTimeout(() => {
+                            if (dog.isDead) return;
+                            butterfly.active = false;
+                            animateBackToStart();
+                        }, 2500);
+                    });
+                });
+            }, 1500); 
+        }
+    }, 7000); 
 }
 
-// ==================================================================================
-// KATTINTÁSI ESEMÉNYEK KEZELÉSE
-// ==================================================================================
-
-canvas.addEventListener("click", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-
-    if (dog.isDead) {
-        if (x >= resetButton.x && x <= resetButton.x + resetButton.width &&
-            y >= resetButton.y && y <= resetButton.y + resetButton.height) {
-            dog.health = 100;
-            dog.hunger = 10;
-            dog.thirst = 10;
-            dog.bladder = 10;
-            dog.isDead = false;
-            dog.isBusy = false;
-            dog.x = dog.startX;
-            dog.y = dog.startY;
-            updateDogAppearance();
-            saveGameData();
-        }
-        return;
-    }
-
-    if (dog.isBusy || dog.isInDoghouse || dog.isPeeing || dog.isBarkingAtPostman) return;
-
-    // Víz tál kattintás (tál feltöltése vagy ivás)
-    if (x >= bowls.water.x && x <= bowls.water.x + bowls.water.width &&
-        y >= bowls.water.y && y <= bowls.water.y + bowls.water.height) {
-        if (!bowls.water.isFull) {
-            bowls.water.isFull = true;
-        } else {
-            moveDogTo(bowls.water.x - 60, bowls.water.y + 10, dogImages.drinking, () => {
-                returnTimeout = setTimeout(() => {
-                    dog.thirst = Math.max(0, dog.thirst - 40);
-                    bowls.water.isFull = false;
-                    animateBackToStart();
-                }, 3000);
-            });
-        }
-        return;
-    }
-
-    // Kaja tál kattintás (tál feltöltése vagy evés)
-    if (x >= bowls.food.x && x <= bowls.food.x + bowls.food.width &&
-        y >= bowls.food.y && y <= bowls.food.y + bowls.food.height) {
-        if (!bowls.food.isFull) {
-            bowls.food.isFull = true;
-        } else {
-            moveDogTo(bowls.food.x - 60, bowls.food.y + 10, dogImages.eating, () => {
-                returnTimeout = setTimeout(() => {
-                    dog.hunger = Math.max(0, dog.hunger - 40);
-                    bowls.food.isFull = false;
-                    animateBackToStart();
-                }, 3000);
-            });
-        }
-        return;
-    }
-
-    // Kutya simogatás / mérgeskedés
-    if (x >= dog.x && x <= dog.x + dog.width && y >= dog.y && y <= dog.y + dog.height) {
-        dog.isBusy = true;
-        if (tailWagInterval) clearInterval(tailWagInterval);
-        dog.currentImage = dogImages.angry;
-
-        returnTimeout = setTimeout(() => {
-            dog.isBusy = false;
-            updateDogAppearance();
-        }, 2000);
-    }
-});
-
-// ==================================================================================
-// FŐ RENDERELÉSI CIKLUS
-// ==================================================================================
+function resetGame() {
+    dog.health = 100;
+    dog.hunger = 10;
+    dog.thirst = 10;
+    dog.bladder = 10;
+    dog.isDead = false;
+    dog.isInDoghouse = false;
+    dog.x = dog.startX;
+    dog.y = dog.startY;
+    dog.isBusy = false;
+    butterfly.active = false;
+    squirrel.active = false;
+    postman.active = false;
+    if (tailWagInterval) clearInterval(tailWagInterval);
+    if (returnTimeout) clearTimeout(returnTimeout);
+    if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
+    updateDogAppearance();
+    saveGameData();
+    startPeeLoop();
+}
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 1. Udvar háttér
-    if (yardImg.complete) {
-        ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(yardImg, 0, 0, canvas.width, canvas.height);
+    
+    ctx.drawImage(treeImg, treeLeft.x, treeLeft.y, treeLeft.width, treeLeft.height);
+    ctx.drawImage(treeImg, treeRight.x, treeRight.y, treeRight.width, treeRight.height);
+    ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
+    ctx.drawImage(fenceImg, fence.x, fence.y, fence.width, fence.height); // Kerítés rajzolása
+    
+    ctx.drawImage(bowls.water.img, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
+    ctx.drawImage(bowls.food.img, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
+    
+    if (butterfly.active && !dog.isDead) {
+        ctx.drawImage(butterflyImg, butterfly.x, butterfly.y, butterfly.width, butterfly.height);
     }
 
-    // 2. Kutyaház
-    if (doghouseImg.complete) {
-        ctx.drawImage(doghouseImg, doghouse.x, doghouse.y, doghouse.width, doghouse.height);
+    if (squirrel.active && !dog.isDead) {
+        ctx.drawImage(squirrelImg, squirrel.x, squirrel.y, squirrel.width, squirrel.height);
     }
 
-    // 3. Fák
-    if (treeImg.complete) {
-        ctx.drawImage(treeImg, treeLeft.x, treeLeft.y, treeLeft.width, treeLeft.height);
-        ctx.drawImage(treeImg, treeRight.x, treeRight.y, treeRight.width, treeRight.height);
+    if (postman.active && !dog.isDead) {
+        ctx.drawImage(postmanImg, postman.x, postman.y, postman.width, postman.height); // Postás rajzolása
     }
 
-    // 4. Tálak
-    let waterImage = bowls.water.isFull ? bowls.water.fullImg : bowls.water.emptyImg;
-    if (waterImage.complete) {
-        ctx.drawImage(waterImage, bowls.water.x, bowls.water.y, bowls.water.width, bowls.water.height);
-    }
-    let foodImage = bowls.food.isFull ? bowls.food.fullImg : bowls.food.emptyImg;
-    if (foodImage.complete) {
-        ctx.drawImage(foodImage, bowls.food.x, bowls.food.y, bowls.food.width, bowls.food.height);
-    }
-
-    // 5. Postás (ha aktív)
-    if (postman.active && postasImg.complete) {
-        ctx.drawImage(postasImg, postman.x, postman.y, postman.width, postman.height);
-    }
-
-    // 6. Kerítés a kert alján
-    if (keritesPattern) {
-        ctx.save();
-        ctx.fillStyle = keritesPattern;
-        let fenceHeight = 150; 
-        ctx.fillRect(0, canvas.height - fenceHeight, canvas.width, fenceHeight);
-        ctx.restore();
-    } else if (keritesImg.complete) {
-        ctx.drawImage(keritesImg, 0, canvas.height - 150, canvas.width, 150);
-    }
-
-    // 7. Kutya rajzolása
-    if (dog.currentImage && dog.currentImage.complete) {
+    if (dog.isDead) {
+        ctx.drawImage(dogImages.dead.complete ? dogImages.dead : dogImages.angry, dog.x, dog.y, dog.width, dog.height);
+    } else {
         ctx.drawImage(dog.currentImage, dog.x, dog.y, dog.width, dog.height);
     }
 
-    // 8. Statisztikák megjelenítése tetején
-    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    ctx.fillRect(50, 50, 980, 120);
+    drawHUD();
+    requestAnimationFrame(gameLoop);
+}
 
-    ctx.fillStyle = "white";
-    ctx.font = "bold 28px sans-serif";
-    ctx.fillText(`Életerő: ${Math.round(dog.health)}%`, 80, 100);
-    ctx.fillText(`Éhség: ${Math.round(dog.hunger)}%`, 380, 100);
-    ctx.fillText(`Szomj: ${Math.round(dog.thirst)}%`, 680, 100);
-
+function drawHUD() {
     if (dog.isDead) {
-        ctx.fillStyle = "rgba(255, 0, 0, 0.7)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "white";
-        ctx.font = "bold 60px sans-serif";
-        ctx.fillText("A KUTYA ELPUSZTULT", 220, 1050);
-
-        // Újraindítás / frissítés gomb
+        
+        ctx.drawImage(dogImages.dead.complete ? dogImages.dead : dogImages.angry, canvas.width / 2 - 125, canvas.height / 2 - 320, 250, 250);
+        
+        ctx.fillStyle = "#e74c3c";
+        ctx.font = "bold 70px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("A KUTYA MEGHALT!", canvas.width / 2, canvas.height / 2 - 120);
+        
         ctx.fillStyle = "#ffffff";
+        ctx.font = "35px Arial";
+        ctx.fillText("Nem gondoskodtál róla időben...", canvas.width / 2, canvas.height / 2 - 50);
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(resetButton.x, resetButton.y, resetButton.width, resetButton.height);
-        ctx.fillStyle = "#000000";
-        ctx.font = "bold 40px sans-serif";
-        ctx.fillText("ÚJRAINDÍTÁS", resetButton.x + 65, resetButton.y + 60);
+        
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(resetButton.x, resetButton.y, resetButton.width, resetButton.height);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.font = "28px Arial";
+        ctx.fillText("Újrakezdés", canvas.width / 2, resetButton.y + resetButton.height / 2 + 10);
+
+        ctx.textAlign = "left";
+        return; 
     }
 
-    requestAnimationFrame(gameLoop);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.fillRect(50, 50, 980, 140);
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(50, 50, 980, 140);
+
+    drawBar(80, 75, 400, 25, "Életcsík", dog.health, "#e74c3c");
+    drawBar(550, 75, 400, 25, "Éhség", 100 - dog.hunger, "#e67e22");
+    drawBar(80, 125, 400, 25, "Szomjúság", 100 - dog.thirst, "#3498db");
+    drawBar(550, 125, 400, 25, "Pisilés", 100 - dog.bladder, "#f1c40f");
+}
+
+function drawBar(x, y, w, h, label, value, color) {
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "22px Arial";
+    ctx.fillText(`${label}:`, x, y - 5);
+
+    ctx.fillStyle = "#444444";
+    ctx.fillRect(x + 110, y - 20, w - 110, h);
+
+    ctx.fillStyle = color;
+    let fillWidth = Math.max(0, ((w - 110) * (value / 100)));
+    ctx.fillRect(x + 110, y - 20, fillWidth, h);
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 110, y - 20, w - 110, h);
+}
+
+function getCanvasCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+    requestFullscreenOnce(); 
+
+    const coords = getCanvasCoords(e);
+    const startX = coords.x;
+    const startY = coords.y;
+
+    if (dog.isDead) {
+        if (startX >= resetButton.x && startX <= resetButton.x + resetButton.width &&
+            startY >= resetButton.y && startY <= resetButton.y + resetButton.height) {
+            resetGame();
+        }
+        return; 
+    }
+
+    if (e.cancelable) e.preventDefault();
+
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+
+    const padding = 60;
+    if (startX >= dog.x - padding && startX <= dog.x + dog.width + padding && 
+        startY >= dog.y - padding && startY <= dog.y + dog.height + padding) {
+        
+        longPressTimer = setTimeout(() => {
+            longPressTimer = null;
+            if (dog.isDead) return;
+            dog.isBusy = true;
+            butterfly.active = false; 
+            squirrel.active = false;
+            postman.active = false;
+            if (tailWagInterval) clearInterval(tailWagInterval);
+            if (returnTimeout) clearTimeout(returnTimeout);
+
+            dog.currentImage = dogImages.belly;
+            dog.health = Math.min(100, dog.health + 5); 
+            saveGameData();
+            
+            returnTimeout = setTimeout(() => { 
+                if (dog.isDead) return;
+                updateDogAppearance(); 
+                dog.isBusy = false; 
+                saveGameData();
+            }, 2000);
+        }, 400);
+    }
+});
+
+canvas.addEventListener("pointerup", (e) => {
+    if (dog.isDead) return; 
+
+    if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+    }
+
+    const coords = getCanvasCoords(e);
+    const moveX = coords.x;
+    const moveY = coords.y;
+    const padding = 60;
+
+    if (moveX >= doghouse.x && moveX <= doghouse.x + doghouse.width && moveY >= doghouse.y && moveY <= doghouse.y + doghouse.height) {
+        if (dog.isBusy || dog.isInDoghouse) return;
+        
+        triggerDogAction(() => {
+            butterfly.active = false;
+            squirrel.active = false;
+            postman.active = false;
+
+            let targetX = doghouse.x + (doghouse.width / 2) - (dog.width / 2);
+            let targetY = doghouse.y + doghouse.height - dog.height + 20;
+
+            moveDogToCustom(targetX, targetY, () => {
+                if (dog.isDead) return;
+                dog.currentImage = dogImages.sleep; 
+                
+                returnTimeout = setTimeout(() => {
+                    if (dog.isDead) return;
+                    animateBackToStart(); 
+                }, 5000); 
+            });
+        });
+        return;
+    }
+
+    if (butterfly.active && moveX >= butterfly.x - 40 && moveX <= butterfly.x + butterfly.width + 40 &&
+        moveY >= butterfly.y - 40 && moveY <= butterfly.y + butterfly.height + 40) {
+        
+        if (butterflyTimeout) clearTimeout(butterflyTimeout);
+        triggerDogAction(() => {
+            let targetX = butterfly.x - dog.width / 2 + 20;
+            let targetY = butterfly.y - dog.height / 2 + 20;
+
+            moveDogToCustom(targetX, targetY, () => {
+                if (dog.isDead) return;
+                dog.currentImage = dogImages.bark;
+                returnTimeout = setTimeout(() => {
+                    if (dog.isDead) return;
+                    butterfly.active = false;
+                    animateBackToStart();
+                }, 2500);
+            });
+        });
+        return;
+    }
+
+    if (moveX >= dog.x - padding && moveX <= dog.x + dog.width + padding && 
+        moveY >= dog.y - padding && moveY <= dog.y + dog.height + padding) {
+        
+        if (dog.isBusy) return;
+        dog.isBusy = true;
+        butterfly.active = false;
+        squirrel.active = false;
+        postman.active = false;
+        if (tailWagInterval) clearInterval(tailWagInterval);
+        if (returnTimeout) clearTimeout(returnTimeout);
+
+        dog.currentImage = dogImages.angry;
+        returnTimeout = setTimeout(() => { 
+            if (dog.isDead) return;
+            updateDogAppearance(); 
+            dog.isBusy = false; 
+        }, 1500);
+        return;
+    }
+
+    if (moveX >= treeLeft.x && moveX <= treeLeft.x + treeLeft.width && moveY >= treeLeft.y && moveY <= treeLeft.y + treeLeft.height) {
+        triggerDogAction(() => {
+            butterfly.active = false;
+            squirrel.active = false;
+            postman.active = false;
+            let targetX = treeLeft.x + (treeLeft.width / 2) - (dog.width / 2) - 60;
+            let targetY = treeLeft.y + treeLeft.height - 230; 
+            moveDogToCustom(targetX, targetY, () => {
+                if (dog.isDead) return;
+                dog.currentImage = dogImages.pee;
+                dog.bladder = 0; 
+                saveGameData();
+                returnTimeout = setTimeout(() => { if (!dog.isDead) animateBackToStart(); }, 2500);
+            });
+        });
+        return;
+    }
+
+    if (moveX >= treeRight.x && moveX <= treeRight.x + treeRight.width && moveY >= treeRight.y && moveY <= treeRight.y + treeRight.height) {
+        triggerDogAction(() => {
+            butterfly.active = false;
+            squirrel.active = false;
+            postman.active = false;
+            let targetX = treeRight.x + (treeRight.width / 2) - (dog.width / 2) - 60;
+            let targetY = treeRight.y + treeRight.height - 230; 
+            moveDogToCustom(targetX, targetY, () => {
+                if (dog.isDead) return;
+                dog.currentImage = dogImages.pee;
+                dog.bladder = 0; 
+                saveGameData();
+                returnTimeout = setTimeout(() => { if (!dog.isDead) animateBackToStart(); }, 2500);
+            });
+        });
+        return;
+    }
+
+    let clickedBowl = false;
+    Object.values(bowls).forEach(bowl => {
+        if (moveX >= bowl.x && moveX <= bowl.x + bowl.width && moveY >= bowl.y && moveY <= bowl.y + bowl.height) {
+            clickedBowl = true;
+            triggerDogAction(() => {
+                butterfly.active = false;
+                squirrel.active = false;
+                postman.active = false;
+                bowl.isFull = true; 
+                bowl.img = bowl.fullImg;
+                
+                const isFoodBowl = (bowl === bowls.food);
+                const imgAsset = isFoodBowl ? dogImages.eating : dogImages.drinking;
+                
+                let targetX = (bowl.x + (bowl.width / 2) - (dog.width / 2)) + 70;
+                let targetY = bowl.y - 120; 
+
+                moveDogToExplicit(targetX, targetY, imgAsset, () => { 
+                    if (dog.isDead) return;
+                    bowl.isFull = false; 
+                    bowl.img = bowl.emptyImg;
+                    
+                    if (isFoodBowl) {
+                        dog.hunger = Math.max(0, dog.hunger - 40);
+                    } else {
+                        dog.thirst = Math.max(0, dog.thirst - 40);
+                    }
+                    saveGameData();
+                });
+            });
+        }
+    });
+
+    if (clickedBowl) return;
+    
+    triggerDogAction(() => {
+        butterfly.active = false;
+        postman.active = false;
+        
+        squirrel.baseX = moveX - squirrel.width / 2;
+        squirrel.baseY = moveY - squirrel.height / 2;
+        squirrel.x = squirrel.baseX;
+        squirrel.y = squirrel.baseY;
+        squirrel.active = true;
+
+        squirrelMoveInterval = setInterval(() => {
+            if (!squirrel.active || dog.isDead) return;
+            let randomOffsetX = (Math.random() - 0.5) * 70;
+            let randomOffsetY = (Math.random() - 0.5) * 70;
+            squirrel.x = squirrel.baseX + randomOffsetX;
+            squirrel.y = squirrel.baseY + randomOffsetY;
+        }, 600);
+
+        squirrelTimeout = setTimeout(() => {
+            if (squirrelMoveInterval) clearInterval(squirrelMoveInterval);
+            if (!squirrel.active || dog.isDead) return;
+
+            let targetX = squirrel.x - dog.width / 2 + 20;
+            let targetY = squirrel.y - dog.height / 2 + 20;
+
+            moveDogToCustom(targetX, targetY, () => {
+                if (dog.isDead) return;
+                dog.currentImage = dogImages.bark; 
+                
+                returnTimeout = setTimeout(() => {
+                    if (dog.isDead) return;
+                    squirrel.active = false;
+                    animateBackToStart();
+                }, 2500);
+            });
+        }, 3500);
+    });
+});
+
+function triggerDogAction(actionCallback) {
+    if (dog.isDead) return;
+    if (returnTimeout) { clearTimeout(returnTimeout); returnTimeout = null; }
+    if (currentAnimationId) { cancelAnimationFrame(currentAnimationId); currentAnimationId = null; }
+    if (tailWagInterval) clearInterval(tailWagInterval);
+    dog.isBusy = false;
+    actionCallback();
+}
+
+function moveDogToExplicit(targetX, targetY, img, onComplete) {
+    if (dog.isDead) return;
+    dog.isBusy = true;
+    const animateToBowl = () => {
+        if (dog.isDead) return;
+        let dx = targetX - dog.x; let dy = targetY - dog.y;
+        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+            dog.x += dx * 0.15; dog.y += dy * 0.15;
+            dog.currentImage = dogImages.walk;
+            currentAnimationId = requestAnimationFrame(animateToBowl);
+        } else {
+            dog.x = targetX; dog.y = targetY; dog.currentImage = img;
+            returnTimeout = setTimeout(() => { 
+                if (dog.isDead) return;
+                animateBackToStart(); 
+                if (onComplete) onComplete(); 
+            }, 2000);
+        }
+    };
+    animateToBowl();
+}
+
+function moveDogToCustom(targetX, targetY, onComplete) {
+    if (dog.isDead) return;
+    dog.isBusy = true;
+    const animateCustom = () => {
+        if (dog.isDead) return;
+        let dx = targetX - dog.x; let dy = targetY - dog.y;
+        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+            dog.x += dx * 0.15; dog.y += dy * 0.15;
+            dog.currentImage = dogImages.walk;
+            currentAnimationId = requestAnimationFrame(animateCustom);
+        } else {
+            dog.x = targetX; dog.y = targetY;
+            if (onComplete) onComplete();
+        }
+    };
+    animateCustom();
+}
+
+function animateBackToStart() {
+    if (dog.isDead) return;
+    dog.isBusy = true;
+    const stepBack = () => {
+        if (dog.isDead) return;
+        let dx = dog.startX - dog.x; let dy = dog.startY - dog.y;
+        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+            dog.x += dx * 0.15; dog.y += dy * 0.15;
+            dog.currentImage = dogImages.walk;
+            currentAnimationId = requestAnimationFrame(stepBack);
+        } else {
+            dog.x = dog.startX;
+            dog.y = dog.startY;
+            dog.isBusy = false; 
+            currentAnimationId = null;
+            updateDogAppearance(); 
+            saveGameData();
+        }
+    };
+    stepBack();
 }
